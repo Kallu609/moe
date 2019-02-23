@@ -1,6 +1,7 @@
 import * as _ from 'lodash';
 
-import { pathTo } from '../lib/player';
+import { minerScript } from '../scripts/miner';
+import { testerScript } from '../scripts/tester';
 
 export class Panel {
   private URL_BASE = 'http://localhost:8080/';
@@ -19,29 +20,39 @@ export class Panel {
     const panelEl = document.querySelector('.bot-panel') as Element;
     const $panel = panelEl.querySelector.bind(panelEl);
     const el = {
-      findPathBtn: $panel('.find-path button') as HTMLButtonElement,
-      findPathX: $panel('.find-path #coord-x') as HTMLInputElement,
-      findPathY: $panel('.find-path #coord-y') as HTMLInputElement,
-      mouseCoords: $panel('#mouse-coords') as HTMLSpanElement,
+      scriptTestBtn: $panel('#script-test') as HTMLButtonElement,
+      scriptMinerBtn: $panel('#script-miner') as HTMLButtonElement,
+
+      mouseCoords: $panel('#mouse-coords') as HTMLDivElement,
+      currentMap: $panel('#current-map') as HTMLDivElement,
+      playerPath: $panel('#player-path') as HTMLDivElement,
     };
 
-    // Path finder
+    // Scripts
 
-    el.findPathBtn.onclick = () => {
-      const x = parseInt(el.findPathX.value, 10);
-      const y = parseInt(el.findPathY.value, 10);
+    el.scriptTestBtn.onclick = () => {
+      testerScript.run();
+    };
 
-      console.log('Path: ', pathTo(x, y));
+    el.scriptMinerBtn.onclick = () => {
+      minerScript.run();
     };
 
     // Mouse coords
 
-    const throttled = _.throttle(e => {
-      const pos = translateMousePosition(e.clientX, e.clientY);
-      el.mouseCoords.innerHTML = `{x: ${pos.i}, y: ${pos.j}}`;
+    const onMouseMove = _.throttle(e => {
+      const mousePos = translateMousePosition(e.clientX, e.clientY);
+      el.mouseCoords.innerHTML = `{x: ${mousePos.i}, y: ${mousePos.j}}`;
     }, 100);
 
-    document.body.addEventListener('mousemove', throttled);
+    setInterval(() => {
+      el.currentMap.textContent = current_map.toString();
+      el.playerPath.textContent = players[0]
+        ? `${JSON.stringify(players[0].path)}`
+        : '[]';
+    }, 100);
+
+    document.body.addEventListener('mousemove', onMouseMove);
   }
 
   async addStyle() {

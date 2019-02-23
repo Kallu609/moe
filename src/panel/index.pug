@@ -1,9 +1,13 @@
 .bot-panel
-  .find-path
-    button Find path
-    input#coord-x(type='number', placeholder='x')
-    input#coord-y(type='number', placeholder='y')
+  button#script-test Run tester
+  button#script-miner Run miner
 
-  p
-    | MouseCoords = 
-    span#mouse-coords
+  .info-grid
+    div Mouse coords
+    div#mouse-coords
+
+    div Current map
+    div#current-map
+
+    div Player path
+    div#player-path

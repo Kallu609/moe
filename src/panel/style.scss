@@ -9,6 +9,7 @@
   left: 20px;
   z-index: 9999;
   color: white;
+  font-size: 12px;
   font-family: Courier New, Courier, Lucida Sans Typewriter, Lucida Typewriter,
     monospace !important;
 
@@ -18,7 +19,14 @@
     }
   }
 
-  p {
-    padding: 10px;
+  .info-grid {
+    margin-top: 5px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 250px;
+
+    div {
+      padding: 5px;
+    }
   }
 }

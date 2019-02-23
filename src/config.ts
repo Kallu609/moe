@@ -3,6 +3,4 @@ const config = {
   password: process.env.MOEE_PASSWORD || '',
 };
 
-console.log(config);
-
 export default config;
