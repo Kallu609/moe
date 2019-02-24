@@ -1,6 +1,7 @@
 import config from './config';
 import { waitForConnection } from './lib/game';
 import { Panel } from './panel/panel';
+import { captchaDetector } from './utils/2captcha';
 import * as logger from './utils/logger';
 
 export class Bot {
@@ -18,6 +19,7 @@ export class Bot {
       do_login(config.username, config.password);
     }
 
+    captchaDetector();
     logger.log('[@] Bot loaded.');
   }
 }

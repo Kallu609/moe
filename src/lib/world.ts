@@ -1,11 +1,14 @@
+import * as _ from 'lodash';
+
+import { IObject } from '../types/game';
+import { sortByDistance } from '../utils/math';
 import { waitUntil } from '../utils/waitUntil';
 import { itemNamesToIds, itemNameToId } from './game';
+import { player } from './player';
 
 export const world = {
-  pathTo: (x: number, y: number) => {
-    const path = findPathFromTo(players[0], { i: x, j: y }, players[0]);
-    return path;
-  },
+  pathTo: (i: number, j: number) =>
+    findPathFromTo(players[0], { i, j }, players[0]),
 
   waitForMap: (mapId: number | string) => {
     return waitUntil(
@@ -25,14 +28,59 @@ export const world = {
       }
     });
     Socket.send('teleport', { target_id: target.id });
+    console.log(target.params);
 
     if (target.params && target.params.to_map) {
+      console.log('waiting for map');
       await world.waitForMap(target.params.to_map);
+      console.log('we at map');
     }
   },
 
   getObjectAt(i: number, j: number) {
-    return objects_data.find(obj => obj && obj.i === i && obj.j === j);
+    try {
+      return obj_g(on_map[current_map][i][j]);
+    } catch {
+      return false;
+    }
+  },
+
+  getNpcsById(id: number) {
+    const npcs: IObject[] = [];
+
+    // tslint:disable-next-line:prefer-for-of
+    for (let i = 0; i < on_map[current_map].length; i++) {
+      for (let j = 0; j < on_map[current_map][0].length; j++) {
+        const tile = on_map[current_map][i][j];
+        if (tile && tile.b_i === id) {
+          const obj = obj_g(on_map[current_map][i][j]);
+
+          if (obj) {
+            npcs.push(obj);
+          }
+        }
+      }
+    }
+
+    return npcs;
+  },
+
+  getNpcsByName(name: string) {
+    const npc = npc_base.find(x => x.name.toLowerCase() === name.toLowerCase());
+
+    if (npc) {
+      return world.getNpcsById(npc.b_i);
+    }
+
+    return [];
+  },
+
+  getClosestNpc(name: string): IObject {
+    const playerPos = player.getPosition();
+    const npcs = this.getNpcsByName(name);
+    const closest = sortByDistance(playerPos, npcs)[0];
+
+    return closest as IObject;
   },
 
   chest: {
@@ -47,24 +95,79 @@ export const world = {
       }
     },
 
-    depositItems: (itemNames: string[]) => {
+    depositAllResources: async () => {
+      const resourceIds = _.flatten(Object.values(Inventory.resources_list));
+      const targetCount =
+        player.inventory.getAllItemsCount() -
+        resourceIds.reduce((acc, itemId) => {
+          return acc + player.inventory.getItemCountById(itemId);
+        });
+
+      for (const item of players[0].temp.inventory) {
+        if (resourceIds.includes(item.id)) {
+          const itemCount = Inventory.get_item_count(players[0], item.id);
+
+          Socket.send('chest_deposit', {
+            item_id: item.id,
+            item_slot: Number(selected_chest) + 60 * (chest_page - 1),
+            target_id: chest_npc.id,
+            target_i: chest_npc.i,
+            target_j: chest_npc.j,
+            amount: itemCount,
+          });
+        }
+      }
+
+      await waitUntil(
+        () => player.inventory.getAllItemsCount() === targetCount
+      );
+    },
+
+    depositAll: async () => {
+      const targetCount =
+        player.inventory.getAllItemsCount() -
+        player.inventory.getUnequippedCount();
+
+      Socket.send('chest_deposit_all', {
+        target_id: chest_npc.id,
+        target_i: chest_npc.i,
+        target_j: chest_npc.j,
+      });
+
+      await waitUntil(
+        () => player.inventory.getAllItemsCount() === targetCount
+      );
+    },
+
+    depositItems: async (itemNames: string[]) => {
       const itemIds = itemNamesToIds(itemNames);
+      const targetCount =
+        player.inventory.getAllItemsCount() -
+        itemIds.reduce((acc, itemId) => {
+          return acc + player.inventory.getItemCountById(itemId);
+        });
 
       for (const itemId of itemIds) {
         const itemCount = Inventory.get_item_count(players[0], itemId);
 
         Socket.send('chest_deposit', {
           item_id: itemId,
-          item_slot: 0,
+          item_slot: Number(selected_chest) + 60 * (chest_page - 1),
           target_id: chest_npc.id,
           target_i: chest_npc.i,
           target_j: chest_npc.j,
           amount: itemCount,
         });
       }
+
+      await waitUntil(
+        () => player.inventory.getAllItemsCount() === targetCount
+      );
     },
 
-    withdraw: (itemName: string, amount = 40) => {
+    withdraw: async (itemName: string, amount = 40) => {
+      const invCount = player.inventory.getAllItemsCount();
+      const targetCount = invCount + amount > 40 ? 40 : invCount;
       const itemId = itemNameToId(itemName);
 
       if (!itemId) {
@@ -79,6 +182,10 @@ export const world = {
         target_j: chest_npc.j,
         amount,
       });
+
+      await waitUntil(
+        () => player.inventory.getAllItemsCount() === targetCount
+      );
     },
   },
 };

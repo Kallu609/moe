@@ -1,7 +1,13 @@
 import { player } from '../lib/player';
+import { ScriptBase } from './scriptBase';
 
-export const testerScript = {
-  run: async () => {
-    console.log('lol test');
-  },
-};
+export class TesterScript extends ScriptBase {
+  getAction() {
+    return this.test;
+  }
+
+  async test() {
+    player.moveTo(83, 28);
+    this.stop();
+  }
+}

@@ -3,8 +3,8 @@
   all: unset;
 
   position: absolute;
-  background: #00171f !important;
-  padding: 10px;
+  background: #112f41 !important;
+  padding: 5px 0px 0px 5px;
   top: 20px;
   left: 20px;
   z-index: 9999;
@@ -23,10 +23,16 @@
     margin-top: 5px;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    width: 250px;
+    width: 300px;
 
     div {
       padding: 5px;
+    }
+
+    #player-path {
+      background: #068587;
+      height: 100px;
+      overflow-y: scroll;
     }
   }
 }

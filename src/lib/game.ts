@@ -1,4 +1,3 @@
-import { IItemBaseItem } from '../types/items';
 import { waitUntil } from '../utils/waitUntil';
 
 export const waitForConnection = async () =>

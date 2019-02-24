@@ -16,10 +16,12 @@ function injectScript(src) {
   });
 }
 
-injectScript('http://localhost:8080/bot.js')
-  .then(() => {
-    console.log('Script loaded!');
-  })
-  .catch(error => {
-    console.log(error);
-  });
+(() => {
+  injectScript('http://localhost:8080/bot.js')
+    .then(() => {
+      console.log('Script loaded!');
+    })
+    .catch(error => {
+      console.log(error);
+    });
+})();
