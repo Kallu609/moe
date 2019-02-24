@@ -34,7 +34,10 @@ export class Panel {
   async addScriptButtons() {
     this.addScriptButton(new TesterScript('Tester'));
     this.addScriptButton(
-      new FighterScript('Fighter', { npcName: 'orc mage', food: 'cooked eel' })
+      new FighterScript('Fighter', {
+        npcName: 'redback spider',
+        food: 'cooked cowfish',
+      })
     );
     this.addScriptButton(new MiningScript('Miner'));
   }

@@ -6,6 +6,7 @@
     "no-console": {
       "severity": "off"
     },
-    "member-access": false
+    "member-access": false,
+    "no-debugger": false
   }
 }

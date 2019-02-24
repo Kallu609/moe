@@ -1,5 +1,4 @@
-import * as _ from 'lodash';
-
+import { getFoodHealAmount } from '../lib/item';
 import { player } from '../lib/player';
 import { world } from '../lib/world';
 import { sleep, waitUntil } from '../utils/waitUntil';
@@ -14,13 +13,16 @@ export class FighterScript extends ScriptBase {
   constructor(scriptName: string, private options: IFighterScriptOptions) {
     super(scriptName);
   }
-  getAction() {
+
+  getAction = () => {
     if (player.inventory.getFoodCount() === 0) {
-      console.log(player.inventory.getFoodCount(), players[0].temp.inventory);
       return this.walkToChestAndWithdrawFood;
     }
 
-    if (player.getMaxHp() - player.getCurrentHp() > 12) {
+    if (
+      player.getMaxHp() - player.getCurrentHp() >
+      getFoodHealAmount(this.options.food)
+    ) {
       return this.eat;
     }
 
@@ -29,7 +31,7 @@ export class FighterScript extends ScriptBase {
     }
 
     return this.attackNpc;
-  }
+  };
 
   attackNpc = async () => {
     this.currentAction = 'Attacking NPC';
@@ -38,9 +40,10 @@ export class FighterScript extends ScriptBase {
   };
 
   waitUntilFightDone = async () => {
-    this.currentAction = 'Waiting fight end';
+    this.currentAction = 'Fighting';
+
     await waitUntil(() => !inAFight);
-    await sleep(_.random(500, 1500));
+    await this.sleep(500, 2500);
   };
 
   walkToChestAndWithdrawFood = async () => {
@@ -48,12 +51,16 @@ export class FighterScript extends ScriptBase {
     await player.moveTo(83, 37);
     await world.chest.open(83, 38);
     await world.chest.depositAll();
+
+    if (!world.chest.getItemCount(this.options.food)) {
+      this.stop();
+    }
     await world.chest.withdraw(this.options.food);
-    await sleep(_.random(3000, 10000));
+    await this.sleep(3000, 10000);
   };
 
   eat = async () => {
     this.currentAction = 'Eating';
-    player.eatFood();
+    await player.inventory.eatFood();
   };
 }

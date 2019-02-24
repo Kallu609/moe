@@ -20,19 +20,15 @@ export function captchaDetector() {
 
     checkingCaptcha = true;
 
-    while (true) {
-      console.log('Detected captcha image!');
+    while (checkingCaptcha) {
+      console.log('Detected captcha image');
 
-      const base64 = captchaEl
-        .getAttribute('style')!
-        .split('url("')[1]
-        .split('"')[0];
-
-      const answer = await solveCaptcha(base64);
+      const image = getCaptchaBase64();
+      const answer = await solveCaptcha(image);
 
       if (answer) {
         Socket.send('captcha', { value: answer });
-        console.log('Got captcha answer: ' + answer);
+        console.log('Captcha answer: ' + answer);
 
         await waitUntil(
           () =>
@@ -40,34 +36,53 @@ export function captchaDetector() {
             captchaResponseEl.style.display === 'block'
         );
 
-        captchaEl.setAttribute(
-          'style',
-          'display:inline-block;background-repeat:no-repeat;'
-        );
+        removeCaptchaImage();
 
         // Captcha FAILED
         if (captchaResponseEl.style.display === 'block') {
+          console.log('Failure answer');
           captchaResponseEl.style.display = 'none';
-          CaptchaControl.render(); // Generate new captcha
+          await refreshCaptcha();
           continue;
         }
 
-        // $('#captcha_bonus_assign_form').style.display = 'none';
-        captcha = false;
+        captcha = false; // Required by mo.ee
+
         failSafe = 0;
-        break;
+        checkingCaptcha = false;
       } else {
         console.log('No answer :( Trying again');
         failSafe++;
 
         if (failSafe >= 3) {
+          checkingCaptcha = false;
           clearInterval(interval);
         }
       }
     }
-
-    checkingCaptcha = false;
   }, 3000);
+}
+
+function getCaptchaBase64() {
+  return captchaEl
+    .getAttribute('style')!
+    .split('url("')[1]
+    .split('"')[0];
+}
+
+function removeCaptchaImage() {
+  captchaEl.setAttribute(
+    'style',
+    'display:inline-block;background-repeat:no-repeat;'
+  );
+}
+
+async function refreshCaptcha() {
+  Socket.send('captcha', { sub: 'refresh' });
+
+  await waitUntil(() =>
+    (captchaEl.getAttribute('style') as string).includes('url')
+  );
 }
 
 export function solveCaptcha(base64: string) {

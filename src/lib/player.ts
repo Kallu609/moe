@@ -1,8 +1,8 @@
 import * as _ from 'lodash';
 
 import { log } from '../utils/logger';
-import { waitUntil } from '../utils/waitUntil';
-import { itemNameToId } from './game';
+import { sleep, waitUntil } from '../utils/waitUntil';
+import { itemIdFromName } from './item';
 import { world } from './world';
 
 export const player = {
@@ -62,30 +62,21 @@ export const player = {
   getHealthPercent: () =>
     Math.floor((player.getCurrentHp() / player.getMaxHp()) * 100),
 
-  eatFood: async () => {
-    const startCount = player.inventory.getAllItemsCount();
-    Player.eat_food();
-    await waitUntil(
-      () => player.inventory.getAllItemsCount() === startCount - 1
-    );
-  },
-
   inventory: {
     waitUntilFull: () => waitUntil(() => Inventory.is_full(players[0])),
     isFull: () => Inventory.is_full(players[0]),
     getAllItemsCount: () => players[0].temp.inventory.length,
 
     getItemCount: (itemName: string) => {
-      const id = itemNameToId(itemName);
-      return players[0].temp.inventory.filter(x => x.id === id).length;
+      return Inventory.get_item_count(players[0], itemIdFromName(itemName));
     },
 
     getItemCountById: (itemId: number) => {
-      return players[0].temp.inventory.filter(x => x.id === itemId).length;
+      return Inventory.get_item_count(players[0], itemId);
     },
 
     getItemSlots: (itemName: string) => {
-      const itemId = itemNameToId(itemName);
+      const itemId = itemIdFromName(itemName);
       return players[0].temp.inventory
         .map((item, i) => {
           if (item.id === itemId) {
@@ -102,6 +93,15 @@ export const player = {
       return players[0].temp.inventory.filter(item => {
         return item_base[item.id].params.heal !== undefined;
       }).length;
+    },
+
+    async eatFood() {
+      const targetCount = player.inventory.getAllItemsCount() - 1;
+      Player.eat_food();
+      await waitUntil(
+        () => player.inventory.getAllItemsCount() === targetCount
+      );
+      await sleep(500);
     },
 
     getEquippedCount: () =>
@@ -158,7 +158,7 @@ export const player = {
     },
   },
 
-  mine: async (i: number, j: number) => {
+  async mine(i: number, j: number) {
     const rock = world.getObjectAt(i, j);
 
     if (rock) {

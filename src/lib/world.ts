@@ -3,7 +3,7 @@ import * as _ from 'lodash';
 import { IObject } from '../types/game';
 import { sortByDistance } from '../utils/math';
 import { waitUntil } from '../utils/waitUntil';
-import { itemNamesToIds, itemNameToId } from './game';
+import { itemIdFromName, itemIdsFromNames } from './item';
 import { player } from './player';
 
 export const world = {
@@ -19,7 +19,7 @@ export const world = {
     );
   },
 
-  useTeleport: async (i: number, j: number) => {
+  async useTeleport(i: number, j: number) {
     const target = on_map[current_map][i][j];
 
     Object.keys(players).forEach(key => {
@@ -86,7 +86,17 @@ export const world = {
   chest: {
     waitUntilOpened: () => waitUntil(() => Chest.is_open()),
 
-    open: async (i: number, j: number) => {
+    getItemCountById: (itemId: number) => {
+      const chestItem = chest_content.find(x => x.id === itemId);
+      return chestItem ? chestItem.count : 0;
+    },
+
+    getItemCount: (itemName: string) => {
+      const itemId = itemIdFromName(itemName);
+      return itemId ? world.chest.getItemCountById(itemId) : 0;
+    },
+
+    async open(i: number, j: number) {
       const chest = world.getObjectAt(i, j);
 
       if (chest) {
@@ -95,7 +105,7 @@ export const world = {
       }
     },
 
-    depositAllResources: async () => {
+    async depositAllResources() {
       const resourceIds = _.flatten(Object.values(Inventory.resources_list));
       const targetCount =
         player.inventory.getAllItemsCount() -
@@ -123,7 +133,7 @@ export const world = {
       );
     },
 
-    depositAll: async () => {
+    async depositAll() {
       const targetCount =
         player.inventory.getAllItemsCount() -
         player.inventory.getUnequippedCount();
@@ -139,8 +149,8 @@ export const world = {
       );
     },
 
-    depositItems: async (itemNames: string[]) => {
-      const itemIds = itemNamesToIds(itemNames);
+    async depositItems(itemNames: string[]) {
+      const itemIds = itemIdsFromNames(itemNames);
       const targetCount =
         player.inventory.getAllItemsCount() -
         itemIds.reduce((acc, itemId) => {
@@ -165,14 +175,22 @@ export const world = {
       );
     },
 
-    withdraw: async (itemName: string, amount = 40) => {
-      const invCount = player.inventory.getAllItemsCount();
-      const targetCount = invCount + amount > 40 ? 40 : invCount;
-      const itemId = itemNameToId(itemName);
+    async withdraw(itemName: string, amount = 40) {
+      const itemId = itemIdFromName(itemName);
 
       if (!itemId) {
         return;
       }
+
+      const chestItemCount = world.chest.getItemCountById(itemId);
+      amount = chestItemCount < amount ? chestItemCount : amount;
+
+      if (!amount) {
+        return;
+      }
+
+      const invCount = player.inventory.getAllItemsCount();
+      const targetCount = invCount + amount > 40 ? 40 : invCount;
 
       Socket.send('chest_withdraw', {
         item_id: itemId,

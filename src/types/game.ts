@@ -266,3 +266,8 @@ export interface ISkills {
     multiplier: number;
   };
 }
+
+export interface IChestItem {
+  id: number | string;
+  count: number;
+}

@@ -1,5 +1,6 @@
 import {
-    IItemBase, IMapJsonItem, INpc, IObject, IPlayer, IPlayers, IPosition, IResourceList, ISkills
+    IChestItem, IItemBase, IMapJsonItem, INpc, IObject, IPlayer, IPlayers, IPosition, IResourceList,
+    ISkills
 } from './game';
 
 declare global {
@@ -25,6 +26,7 @@ declare global {
   const skills: ISkills[];
   const selected_chest: number | string;
   const chest_page: number;
+  const chest_content: IChestItem[];
   let captcha: boolean;
   let map_increase: number;
   let touch_hold: number;
@@ -69,7 +71,7 @@ declare global {
   const Inventory: {
     resources_list: IResourceList;
     is_full(player: IPlayer): boolean;
-    get_item_count(player: IPlayer, itemId: number): number;
+    get_item_count(player: IPlayer, itemId: number | undefined): number;
   };
 
   const Chest: {
