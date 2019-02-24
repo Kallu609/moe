@@ -2,7 +2,7 @@ import * as _ from 'lodash';
 
 import { IObject } from '../types/game';
 import { sortByDistance } from '../utils/math';
-import { waitUntil } from '../utils/waitUntil';
+import { sleep, waitUntil } from '../utils/waitUntil';
 import { itemIdFromName, itemIdsFromNames } from './item';
 import { player } from './player';
 
@@ -10,8 +10,8 @@ export const world = {
   pathTo: (i: number, j: number) =>
     findPathFromTo(players[0], { i, j }, players[0]),
 
-  waitForMap: (mapId: number | string) => {
-    return waitUntil(
+  async waitForMap(mapId: number | string) {
+    await waitUntil(
       () =>
         current_map === Number(mapId) &&
         !map_change_in_progress &&
@@ -27,13 +27,11 @@ export const world = {
         delete players[key];
       }
     });
-    Socket.send('teleport', { target_id: target.id });
-    console.log(target.params);
 
-    if (target.params && target.params.to_map) {
-      console.log('waiting for map');
+    Socket.send('teleport', { target_id: target.id });
+
+    if (target.params && target.params.to_map !== undefined) {
       await world.waitForMap(target.params.to_map);
-      console.log('we at map');
     }
   },
 
@@ -144,8 +142,16 @@ export const world = {
         target_j: chest_npc.j,
       });
 
+      Socket.send('pet_chest_unload_to_chest', {
+        target_id: chest_npc.id,
+        target_i: chest_npc.i,
+        target_j: chest_npc.j,
+      });
+
       await waitUntil(
-        () => player.inventory.getAllItemsCount() === targetCount
+        () =>
+          player.inventory.getAllItemsCount() === targetCount &&
+          players[0].pet.chest.length === 0
       );
     },
 

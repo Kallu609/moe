@@ -27,6 +27,7 @@ declare global {
   const selected_chest: number | string;
   const chest_page: number;
   const chest_content: IChestItem[];
+  const lastRunAwayAttempt: number;
   let captcha: boolean;
   let map_increase: number;
   let touch_hold: number;
@@ -57,6 +58,7 @@ declare global {
 
   const closeAllActiveWindows: () => void;
   const do_login: (username: string, password: string) => void;
+  const timestamp: () => number;
   const translateMousePosition: (x: number, y: number) => IPosition;
   const obj_g: (mapIndice: IMapJsonItem) => IObject | false;
 
@@ -83,6 +85,7 @@ declare global {
     running(key: string): boolean;
   };
 
+  const penalty_bonus: () => void;
   const CaptchaControl: {
     render(): void;
   };

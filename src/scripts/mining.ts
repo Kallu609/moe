@@ -31,38 +31,43 @@ export class MiningScript extends ScriptBase {
     return this.stop;
   }
 
-  async walkToMine() {
+  walkToMine = async () => {
+    this.currentAction = 'Walking to mine';
     await player.moveTo(66, 30);
     await world.useTeleport(66, 29);
-  }
+  };
 
-  async walkToMiningSpot() {
+  walkToMiningSpot = async () => {
+    this.currentAction = 'Walking to mining spot';
     await player.moveTo(69, 15);
     await player.moveTo(67, 15);
-  }
+  };
 
-  async startMining() {
+  startMining = async () => {
+    this.currentAction = 'Mining';
     await player.mine(67, 14);
     await player.inventory.waitUntilFull();
     await player.pet.load();
     await player.mine(67, 14);
     await player.inventory.waitUntilFull();
-  }
+  };
 
-  async walkToOverWorld() {
+  walkToOverWorld = async () => {
+    this.currentAction = 'Walking to overworld';
     await player.moveTo(69, 15);
     await player.moveTo(67, 29);
     await world.useTeleport(66, 29);
-  }
+  };
 
-  async walkToBank() {
+  walkToBank = async () => {
+    this.currentAction = 'Walking to bank';
     await player.moveTo(83, 37);
-  }
+  };
 
-  async depositItems() {
+  depositItems = async () => {
+    this.currentAction = 'Depositing items';
     await world.chest.open(83, 38);
     await world.chest.depositAll();
-    await player.pet.unload();
-    await world.chest.depositAll();
-  }
+    this.sleep(3000, 7000);
+  };
 }

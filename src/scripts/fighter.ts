@@ -1,12 +1,17 @@
 import { getFoodHealAmount } from '../lib/item';
 import { player } from '../lib/player';
 import { world } from '../lib/world';
-import { sleep, waitUntil } from '../utils/waitUntil';
+import { IPosition } from '../types/game';
+import { waitUntil } from '../utils/waitUntil';
 import { ScriptBase } from './scriptBase';
 
 interface IFighterScriptOptions {
   npcName: string;
   food: string;
+  chest: {
+    pos: IPosition;
+    walkTo: IPosition;
+  };
 }
 
 export class FighterScript extends ScriptBase {
@@ -15,12 +20,12 @@ export class FighterScript extends ScriptBase {
   }
 
   getAction = () => {
-    if (player.inventory.getFoodCount() === 0) {
+    if (player.inventory.getFoodCount() <= 5) {
       return this.walkToChestAndWithdrawFood;
     }
 
     if (
-      player.getMaxHp() - player.getCurrentHp() >
+      player.getMaxHp() - player.getCurrentHp() >=
       getFoodHealAmount(this.options.food)
     ) {
       return this.eat;
@@ -42,14 +47,26 @@ export class FighterScript extends ScriptBase {
   waitUntilFightDone = async () => {
     this.currentAction = 'Fighting';
 
-    await waitUntil(() => !inAFight);
+    const isCriticalHp = () => player.getHealthPercent() <= 50;
+    await waitUntil(
+      () => (!players[0].temp.busy && !inAFight) || isCriticalHp()
+    );
+
+    if (isCriticalHp()) {
+      this.currentAction = 'Running away';
+      await player.runFromFight();
+      return;
+    }
+
     await this.sleep(500, 2500);
   };
 
   walkToChestAndWithdrawFood = async () => {
     this.currentAction = 'Getting food';
-    await player.moveTo(83, 37);
-    await world.chest.open(83, 38);
+
+    const { walkTo, pos: chestPos } = this.options.chest;
+    await player.moveTo(walkTo.i, walkTo.j);
+    await world.chest.open(chestPos.i, chestPos.j);
     await world.chest.depositAll();
 
     if (!world.chest.getItemCount(this.options.food)) {

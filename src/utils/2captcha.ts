@@ -47,6 +47,8 @@ export function captchaDetector() {
         }
 
         captcha = false; // Required by mo.ee
+        captchaBonusEl.style.display = 'none';
+        penalty_bonus();
 
         failSafe = 0;
         checkingCaptcha = false;
@@ -101,6 +103,8 @@ export function solveCaptcha(base64: string) {
         key: config.captchaApiKey,
         method: 'base64',
         body: base64,
+        min_len: 5,
+        max_len: 5,
       }),
     });
     const sendResponse = await sendRequest.text();

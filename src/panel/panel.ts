@@ -35,8 +35,12 @@ export class Panel {
     this.addScriptButton(new TesterScript('Tester'));
     this.addScriptButton(
       new FighterScript('Fighter', {
-        npcName: 'redback spider',
+        npcName: 'snow gungan priest',
         food: 'cooked cowfish',
+        chest: {
+          pos: { i: 63, j: 39 },
+          walkTo: { i: 63, j: 38 },
+        },
       })
     );
     this.addScriptButton(new MiningScript('Miner'));

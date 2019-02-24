@@ -57,6 +57,13 @@ export const player = {
     await waitUntil(() => inAFight || +new Date() - atFightPosition > 500);
   },
 
+  async runFromFight() {
+    while (players[0].temp.busy || inAFight) {
+      Socket.send('run_from_fight', {});
+      await sleep(500);
+    }
+  },
+
   getMaxHp: () => skills[0].health.level,
   getCurrentHp: () => skills[0].health.current,
   getHealthPercent: () =>
@@ -96,11 +103,9 @@ export const player = {
     },
 
     async eatFood() {
-      const targetCount = player.inventory.getAllItemsCount() - 1;
+      const startHp = player.getCurrentHp();
       Player.eat_food();
-      await waitUntil(
-        () => player.inventory.getAllItemsCount() === targetCount
-      );
+      await waitUntil(() => player.getCurrentHp() > startHp + 2);
       await sleep(500);
     },
 
