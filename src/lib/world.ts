@@ -19,18 +19,47 @@ export const world = {
     );
   },
 
-  async useTeleport(i: number, j: number) {
+  getNearObjects() {
+    const pos = player.getPosition();
+
+    return [
+      world.getObjectAt(pos.i, pos.j - 1),
+      world.getObjectAt(pos.i, pos.j + 1),
+      world.getObjectAt(pos.i + 1, pos.j),
+      world.getObjectAt(pos.i - 1, pos.j),
+    ].filter(x => x) as IObject[];
+  },
+
+  getNearObjectByName(name: string) {
+    const nearObjects = world
+      .getNearObjects()
+      .filter(x => x.name.toLowerCase() === name.toLowerCase());
+    const obj = nearObjects[0];
+    return obj;
+  },
+
+  async useTeleport() {
+    const nearTeleports = world
+      .getNearObjects()
+      .filter(x => x.params.to_map !== undefined);
+    const teleport = nearTeleports[0];
+
+    if (teleport) {
+      await this.useTeleportAt(teleport.i, teleport.j);
+    }
+  },
+
+  async useTeleportAt(i: number, j: number) {
     const target = on_map[current_map][i][j];
 
-    Object.keys(players).forEach(key => {
-      if (Number(key) !== 0) {
-        delete players[key];
-      }
-    });
-
-    Socket.send('teleport', { target_id: target.id });
-
     if (target.params && target.params.to_map !== undefined) {
+      Socket.send('teleport', { target_id: target.id });
+      Object.keys(players).forEach(key => {
+        if (Number(key) !== 0) {
+          delete players[key];
+        }
+      });
+
       await world.waitForMap(target.params.to_map);
     }
   },
@@ -43,7 +72,7 @@ export const world = {
     }
   },
 
-  getNpcsById(id: number) {
+  getObjectsById(id: number) {
     const npcs: IObject[] = [];
 
     // tslint:disable-next-line:prefer-for-of
@@ -51,7 +80,7 @@ export const world = {
       for (let j = 0; j < on_map[current_map][0].length; j++) {
         const tile = on_map[current_map][i][j];
         if (tile && tile.b_i === id) {
-          const obj = obj_g(on_map[current_map][i][j]);
+          const obj = world.getObjectAt(i, j);
 
           if (obj) {
             npcs.push(obj);
@@ -64,13 +93,20 @@ export const world = {
   },
 
   getNpcsByName(name: string) {
-    const npc = npc_base.find(x => x.name.toLowerCase() === name.toLowerCase());
+    const npcs = [];
+    name = name.toLowerCase();
 
-    if (npc) {
-      return world.getNpcsById(npc.b_i);
+    for (let i = 0; i < on_map[current_map].length; i++) {
+      for (let j = 0; j < on_map[current_map][0].length; j++) {
+        const npc = world.getObjectAt(i, j);
+
+        if (npc && npc.name.toLowerCase() === name) {
+          npcs.push(npc);
+        }
+      }
     }
 
-    return [];
+    return npcs;
   },
 
   getClosestNpc(name: string): IObject {
@@ -81,11 +117,19 @@ export const world = {
     return closest as IObject;
   },
 
+  getClosestNpcsSorted(name: string): IObject[] {
+    const playerPos = player.getPosition();
+    const npcs = this.getNpcsByName(name);
+    const closest = sortByDistance(playerPos, npcs);
+
+    return closest as IObject[];
+  },
+
   chest: {
     waitUntilOpened: () => waitUntil(() => Chest.is_open()),
 
     getItemCountById: (itemId: number) => {
-      const chestItem = chest_content.find(x => x.id === itemId);
+      const chestItem = chest_content.find(x => Number(x.id) === itemId);
       return chestItem ? chestItem.count : 0;
     },
 
@@ -94,7 +138,15 @@ export const world = {
       return itemId ? world.chest.getItemCountById(itemId) : 0;
     },
 
-    async open(i: number, j: number) {
+    async open() {
+      const chest = world.getNearObjectByName('Chest');
+
+      if (chest) {
+        await world.chest.openAt(chest.i, chest.j);
+      }
+    },
+
+    async openAt(i: number, j: number) {
       const chest = world.getObjectAt(i, j);
 
       if (chest) {

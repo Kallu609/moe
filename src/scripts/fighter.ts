@@ -41,7 +41,7 @@ export class FighterScript extends ScriptBase {
   attackNpc = async () => {
     this.currentAction = 'Attacking NPC';
     const npc = world.getClosestNpc(this.options.npcName);
-    await player.attackNpc(npc.i, npc.j);
+    await player.attackNpc(npc);
   };
 
   waitUntilFightDone = async () => {
@@ -66,7 +66,7 @@ export class FighterScript extends ScriptBase {
 
     const { walkTo, pos: chestPos } = this.options.chest;
     await player.moveTo(walkTo.i, walkTo.j);
-    await world.chest.open(chestPos.i, chestPos.j);
+    await world.chest.openAt(chestPos.i, chestPos.j);
     await world.chest.depositAll();
 
     if (!world.chest.getItemCount(this.options.food)) {

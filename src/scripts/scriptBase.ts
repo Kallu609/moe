@@ -13,28 +13,28 @@ export abstract class ScriptBase {
   abstract getAction(): () => void;
 
   async run() {
-    let actionsFired = 0;
     let actionsPerSecond = 0;
-
-    const apsInterval = setInterval(() => {
-      actionsPerSecond = actionsFired;
-      actionsFired = 0;
-    }, 1000);
+    let startTime = +new Date();
 
     while (this.running && !this.stopFlag) {
       const action = this.getAction();
       await action();
-      actionsFired++;
+      actionsPerSecond++;
 
       if (actionsPerSecond > 10) {
-        console.log(
+        logger.log(
           `[SCRIPT] Possible infinite loop, check code! (${this.currentAction})`
         );
         break;
       }
+
+      const deltaTime = +new Date() - startTime;
+      if (deltaTime > 1000) {
+        startTime = +new Date();
+        actionsPerSecond = 0;
+      }
     }
 
-    clearInterval(apsInterval);
     this.running = false;
     this.stopFlag = false;
     logger.log(`[SCRIPT] "${this.name}" stopped`);
@@ -53,7 +53,9 @@ export abstract class ScriptBase {
 
   sleep = async (min: number, max: number) => {
     const sleepTime = _.random(min, max);
+    const oldAction = this.currentAction;
     this.currentAction = `Sleeping for ${sleepTime}ms`;
     await sleep(sleepTime);
+    this.currentAction = oldAction;
   };
 }

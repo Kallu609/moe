@@ -1,6 +1,6 @@
 import {
-    IChestItem, IItemBase, IMapJsonItem, INpc, IObject, IPlayer, IPlayers, IPosition, IResourceList,
-    ISkills
+    IArcheryCollision, IChestItem, IItemBase, IMapJsonItem, INpc, IObject, IPlayer, IPlayers,
+    IPosition, IResourceList, ISkills
 } from './game';
 
 declare global {
@@ -41,12 +41,20 @@ declare global {
   };
 
   const movementInProgress: (player: IPlayer) => boolean;
-
+  const nearEachOther: (object: IObject, player: IPlayer) => boolean;
   const findPathFromTo: (
     player: IPlayer,
     pos: IPosition,
     playerMapRef: IPlayer // ???
   ) => IPosition[];
+
+  const needsProximity: (
+    player: IPlayer,
+    obj: IObject,
+    distance: number,
+    someVar?: number,
+    someVar2?: number
+  ) => boolean;
 
   const createElem: (
     tagName: string,
@@ -61,6 +69,7 @@ declare global {
   const timestamp: () => number;
   const translateMousePosition: (x: number, y: number) => IPosition;
   const obj_g: (mapIndice: IMapJsonItem) => IObject | false;
+  const distance: (i1: number, j1: number, i2: number, j2: number) => number;
 
   const Mods: {
     loadedMods: string[];
@@ -74,6 +83,7 @@ declare global {
     resources_list: IResourceList;
     is_full(player: IPlayer): boolean;
     get_item_count(player: IPlayer, itemId: number | undefined): number;
+    get_item_counts(player: IPlayer): number;
   };
 
   const Chest: {
@@ -81,8 +91,21 @@ declare global {
     player_find_item_index(startIndex: number, itemId: number): number;
   };
 
+  const Archery: {
+    client_use(player: IPlayer, target: IObject, d?: any): void;
+    bresenham_collision(
+      pos1: IPosition,
+      pos2: IPosition,
+      map: number
+    ): IArcheryCollision;
+  };
+
+  const timer_holder: {
+    [key: string]: number;
+  };
   const Timers: {
     running(key: string): boolean;
+    set(key: string, fn?: () => any, interval?: number): void;
   };
 
   const penalty_bonus: () => void;

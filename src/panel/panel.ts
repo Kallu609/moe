@@ -2,8 +2,10 @@ import Draggable from 'draggable';
 import * as _ from 'lodash';
 
 import { world } from '../lib/world';
+import { ArcheryScript } from '../scripts/archer';
 import { FighterScript } from '../scripts/fighter';
-import { MiningScript } from '../scripts/mining';
+import { MiningGuildScript } from '../scripts/miningGuildMining';
+// import { DorpatMiningScript } from '../scripts/dorpatMining';
 import { ScriptBase } from '../scripts/scriptBase';
 import { TesterScript } from '../scripts/tester';
 import { IPosition } from '../types/game';
@@ -43,7 +45,14 @@ export class Panel {
         },
       })
     );
-    this.addScriptButton(new MiningScript('Miner'));
+    this.addScriptButton(
+      new ArcheryScript('Archer', {
+        npcName: 'Dragonfly',
+        chestPos: { i: 83, j: 37 },
+        arrowName: 'bronze cactus arrow',
+      })
+    );
+    this.addScriptButton(new MiningGuildScript('Miner'));
   }
 
   eventHandlers() {

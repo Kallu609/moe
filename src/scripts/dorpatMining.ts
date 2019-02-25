@@ -2,7 +2,7 @@ import { player } from '../lib/player';
 import { world } from '../lib/world';
 import { ScriptBase } from './scriptBase';
 
-export class MiningScript extends ScriptBase {
+export class DorpatMiningScript extends ScriptBase {
   getAction() {
     if (current_map === 0) {
       if (player.inventory.isFull() && player.pet.isFull()) {
@@ -34,29 +34,31 @@ export class MiningScript extends ScriptBase {
   walkToMine = async () => {
     this.currentAction = 'Walking to mine';
     await player.moveTo(66, 30);
-    await world.useTeleport(66, 29);
+    await world.useTeleport();
   };
 
   walkToMiningSpot = async () => {
     this.currentAction = 'Walking to mining spot';
     await player.moveTo(69, 15);
+    await this.sleep(500, 1500);
     await player.moveTo(67, 15);
   };
 
   startMining = async () => {
     this.currentAction = 'Mining';
-    await player.mine(67, 14);
+    await player.mine('iron');
     await player.inventory.waitUntilFull();
     await player.pet.load();
-    await player.mine(67, 14);
+    await player.mine('iron');
     await player.inventory.waitUntilFull();
   };
 
   walkToOverWorld = async () => {
     this.currentAction = 'Walking to overworld';
     await player.moveTo(69, 15);
+    await this.sleep(500, 1500);
     await player.moveTo(67, 29);
-    await world.useTeleport(66, 29);
+    await world.useTeleport();
   };
 
   walkToBank = async () => {
@@ -66,8 +68,8 @@ export class MiningScript extends ScriptBase {
 
   depositItems = async () => {
     this.currentAction = 'Depositing items';
-    await world.chest.open(83, 38);
+    await world.chest.openAt(83, 38);
     await world.chest.depositAll();
-    this.sleep(3000, 7000);
+    await this.sleep(3000, 7000);
   };
 }

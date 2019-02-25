@@ -12,6 +12,10 @@ export interface IObject {
   map: number;
   params: {
     desc: string;
+    to_map: number;
+    to_i: number;
+    to_j: number;
+    requires_one_from: number[];
   };
   name: string;
   img: {
@@ -90,6 +94,12 @@ export interface IItemBaseItem {
     min_forging: number;
     price: number;
     heal: number;
+    min_archery: number;
+    archery_uses: number;
+    archery_speed: number;
+    archery_cooldown: number;
+    archery_damage: number;
+    archery_range: number;
   };
   name: string;
   img: {
@@ -187,8 +197,14 @@ export interface IPlayerParams {
   played: number;
   today: number;
   archery: {
-    quiver: boolean;
     bow: boolean;
+    count: number;
+    damage_boost: number;
+    id: number;
+    max: number;
+    quiver: boolean;
+    range_boost: number;
+    speed_boost: number;
   };
   island: boolean;
 }
@@ -270,4 +286,14 @@ export interface ISkills {
 export interface IChestItem {
   id: number | string;
   count: number;
+}
+
+export interface IArcheryCollision {
+  collides: boolean;
+  i?: number;
+  j?: number;
+  collision?: Array<{
+    i: number;
+    j: number;
+  }>;
 }

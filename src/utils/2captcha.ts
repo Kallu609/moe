@@ -2,25 +2,23 @@ import { fail } from 'assert';
 import * as queryString from 'query-string';
 
 import config from '../config';
-import { waitUntil } from './waitUntil';
+import { sleep, waitUntil } from './waitUntil';
 
 const $ = document.querySelector.bind(document);
 const captchaEl = $('#numcaptcha2_img') as HTMLDivElement;
 const captchaBonusEl = $('#captcha_bonus_assign_form') as HTMLDivElement;
 const captchaResponseEl = $('#captcha_response') as HTMLSpanElement;
 
-export function captchaDetector() {
-  let failSafe = 0;
-  let checkingCaptcha = false;
-
-  const interval = setInterval(async () => {
-    if (!captchaEl.getAttribute('style')!.includes('url') || checkingCaptcha) {
-      return;
+export async function captchaDetector() {
+  while (true) {
+    if (!captchaEl.getAttribute('style')!.includes('url')) {
+      await sleep(3000);
+      continue;
     }
 
-    checkingCaptcha = true;
+    let failSafe = 0;
 
-    while (checkingCaptcha) {
+    while (true) {
       console.log('Detected captcha image');
 
       const image = getCaptchaBase64();
@@ -43,26 +41,26 @@ export function captchaDetector() {
           console.log('Failure answer');
           captchaResponseEl.style.display = 'none';
           await refreshCaptcha();
-          continue;
+          break;
         }
 
         captcha = false; // Required by mo.ee
-        captchaBonusEl.style.display = 'none';
         penalty_bonus();
-
-        failSafe = 0;
-        checkingCaptcha = false;
-      } else {
-        console.log('No answer :( Trying again');
-        failSafe++;
-
-        if (failSafe >= 3) {
-          checkingCaptcha = false;
-          clearInterval(interval);
-        }
+        await sleep(3000);
+        captchaBonusEl.style.display = 'none';
+        break;
       }
+
+      failSafe++;
+
+      if (failSafe >= 3) {
+        console.log('Failsafe counter exceeded');
+        break;
+      }
+
+      console.log('No answer, trying again');
     }
-  }, 3000);
+  }
 }
 
 function getCaptchaBase64() {
@@ -105,6 +103,7 @@ export function solveCaptcha(base64: string) {
         body: base64,
         min_len: 5,
         max_len: 5,
+        numeric: 1,
       }),
     });
     const sendResponse = await sendRequest.text();
@@ -116,7 +115,7 @@ export function solveCaptcha(base64: string) {
 
     const captchaId = sendResponse.split('|')[1];
 
-    const readInterval = setInterval(async () => {
+    while (true) {
       console.log('Checking for captcha answer');
 
       const resultRequest = await fetch(
@@ -132,9 +131,13 @@ export function solveCaptcha(base64: string) {
 
       if (readResponse.includes('OK')) {
         const captchaAnswer = readResponse.split('|')[1];
-        resolve(captchaAnswer);
-        clearInterval(readInterval);
+        return resolve(captchaAnswer);
+      } else if (readResponse.includes('NOT_READY')) {
+        await sleep(5000);
+      } else {
+        console.log('Error with captcha:', readResponse);
+        return resolve(false);
       }
-    }, 5000);
+    }
   });
 }

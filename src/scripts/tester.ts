@@ -1,4 +1,4 @@
-import { player } from '../lib/player';
+import { world } from '../lib/world';
 import { ScriptBase } from './scriptBase';
 
 export class TesterScript extends ScriptBase {
@@ -6,8 +6,8 @@ export class TesterScript extends ScriptBase {
     return this.test;
   }
 
-  async test() {
-    player.moveTo(83, 28);
+  test = async () => {
+    await world.useTeleport();
     this.stop();
-  }
+  };
 }
