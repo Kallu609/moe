@@ -1,18 +1,30 @@
 .bot-panel
-  .scripts
-
-  .info-grid
+  .grid
     div Script state
-    #script-state
+    #script-state -
+
+    div Select script
+    div
+      select#script-list
+        option(disabled selected value='') -
     
-    div Mouse coords
-    div#mouse-coords
+    div
+      button#start-script Start script
+    div
+      button(disabled)#stop-script Stop script
 
-    div Under mouse
-    div#under-mouse
+  details
+    summary Show details
 
-    div Current map
-    div#current-map
+    .grid
+      div Mouse coords
+      #mouse-coords
 
-    div Player path
-    div#player-path
+      div Under mouse
+      #under-mouse
+
+      div Current map
+      #current-map
+
+      div Player path
+      #player-path

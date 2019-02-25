@@ -64,6 +64,7 @@ declare global {
     }
   ) => void;
 
+  let pageHidden: () => void;
   const closeAllActiveWindows: () => void;
   const do_login: (username: string, password: string) => void;
   const timestamp: () => number;

@@ -52,6 +52,7 @@ export const player = {
   },
 
   attackNpc: async (npc: IObject) => {
+    Socket.send('set_target', { target: npc.id });
     player.moveToBlind(npc.i, npc.j);
     await waitUntil(() => players[0].path.length === 0);
     const atFightPosition = +new Date();

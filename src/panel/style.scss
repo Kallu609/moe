@@ -1,38 +1,57 @@
+@import url('https://fonts.googleapis.com/css?family=Source+Code+Pro');
+
 .bot-panel {
   all: initial;
   all: unset;
 
-  position: absolute;
-  background: #112f41 !important;
-  padding: 5px 0px 0px 5px;
-  top: 20px;
-  left: 20px;
-  z-index: 9999;
-  color: white;
-  font-size: 12px;
-  font-family: Courier New, Courier, Lucida Sans Typewriter, Lucida Typewriter,
-    monospace !important;
-
-  .find-path {
-    input {
-      width: 50px;
-    }
+  * {
+    cursor: default !important;
+    color: white;
   }
 
-  .info-grid {
+  position: absolute;
+  padding: 5px;
+  bottom: 0px;
+  right: 0px;
+  z-index: 9999;
+  background: #112f41 !important;
+  color: white;
+  opacity: 0.92;
+  font-size: 12px;
+  font-family: monospace;
+
+  details {
     margin-top: 5px;
+  }
+
+  .grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     width: 300px;
+    margin-top: 5px;
+    align-items: center;
 
     div {
       padding: 5px;
+      white-space: nowrap;
+      overflow: hidden;
     }
 
-    #player-path {
+    #script-list,
+    button {
+      border: 0;
+      width: 100%;
+      height: 20px;
       background: #068587;
-      height: 100px;
-      overflow-y: scroll;
+      user-select: none;
+
+      &:hover:enabled {
+        background: #046466;
+      }
+
+      &:disabled {
+        color: #9b9b9b;
+      }
     }
   }
 }

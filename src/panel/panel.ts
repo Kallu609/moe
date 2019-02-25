@@ -1,22 +1,25 @@
-import Draggable from 'draggable';
 import * as _ from 'lodash';
 
 import { world } from '../lib/world';
 import { ArcheryScript } from '../scripts/archer';
+import { DorpatMiningScript } from '../scripts/dorpatMining';
 import { FighterScript } from '../scripts/fighter';
 import { MiningGuildScript } from '../scripts/miningGuildMining';
-// import { DorpatMiningScript } from '../scripts/dorpatMining';
 import { ScriptBase } from '../scripts/scriptBase';
 import { TesterScript } from '../scripts/tester';
 import { IPosition } from '../types/game';
 import { waitUntil } from '../utils/waitUntil';
 
 const $ = document.querySelector.bind(document);
-const $all = document.querySelectorAll.bind(document);
+let $p: any;
 
 export class Panel {
   private URL_BASE = 'http://localhost:8080/';
+  private scripts: {
+    [name: string]: ScriptBase;
+  } = {};
   private currentScript: ScriptBase;
+  private mouseTile: IPosition;
 
   constructor() {
     this.init();
@@ -25,132 +28,140 @@ export class Panel {
   async init() {
     await this.addStyle();
     await this.addHtml();
-    await this.addScriptButtons();
 
-    // tslint:disable-next-line:no-unused-expression
-    new Draggable($('.bot-panel'));
+    $p = $('.bot-panel').querySelector.bind($('.bot-panel'));
 
+    this.addScripts();
     this.eventHandlers();
   }
 
-  async addScriptButtons() {
-    this.addScriptButton(new TesterScript('Tester'));
-    this.addScriptButton(
+  addScripts() {
+    this.addScriptToList(new MiningGuildScript('Mining guild miner'));
+    this.addScriptToList(new DorpatMiningScript('Dorpat miner'));
+
+    this.addScriptToList(
       new FighterScript('Fighter', {
-        npcName: 'snow gungan priest',
+        npcName: 'desert runner',
         food: 'cooked cowfish',
-        chest: {
-          pos: { i: 63, j: 39 },
-          walkTo: { i: 63, j: 38 },
-        },
+        chestPos: { i: 14, j: 33 },
       })
     );
-    this.addScriptButton(
+
+    this.addScriptToList(
       new ArcheryScript('Archer', {
         npcName: 'Dragonfly',
         chestPos: { i: 83, j: 37 },
         arrowName: 'bronze cactus arrow',
       })
     );
-    this.addScriptButton(new MiningGuildScript('Miner'));
+
+    this.addScriptToList(new TesterScript('Tester'));
   }
 
-  eventHandlers() {
-    const scriptStateEl = $('.bot-panel #script-state') as HTMLDivElement;
-    const mouseCoordsEl = $('.bot-panel #mouse-coords') as HTMLDivElement;
-    const underMouseEl = $('.bot-panel #under-mouse') as HTMLDivElement;
-    const currentMapEl = $('.bot-panel #current-map') as HTMLDivElement;
-    const playerPathEl = $('.bot-panel #player-path') as HTMLDivElement;
+  eventHandlers = () => {
+    const detailsEl = $p('details') as HTMLElement;
+    const summaryEl = $p('summary') as HTMLElement;
+    const scriptListEl = $p('#script-list') as HTMLSelectElement;
+    const startScriptEl = $p('#start-script') as HTMLButtonElement;
+    const stopScriptEl = $p('#stop-script') as HTMLButtonElement;
 
-    // Mouse
-
-    let mousePos: IPosition;
-
-    document.body.addEventListener('keydown', e => {
-      if (e.key === 'Dead') {
-        if (mousePos.i && mousePos.j) {
-          const obj = world.getObjectAt(mousePos.i, mousePos.j);
-          console.log(obj);
-        }
-      } else if (e.key === '+') {
-        console.log(world.getClosestNpc('green wizard'));
-      }
-    });
-
-    const onMouseMove = _.throttle(e => {
-      mousePos = translateMousePosition(e.clientX, e.clientY);
-      if (!mousePos || !mousePos.i || !mousePos.j) {
-        return;
-      }
-
-      mouseCoordsEl.innerHTML = mousePos
-        ? `i: ${mousePos.i}, j: ${mousePos.j}`
-        : '-';
-
-      const obj = world.getObjectAt(mousePos.i, mousePos.j);
-      underMouseEl.innerHTML = obj ? `${obj.name} (id: ${obj.b_i})` : '-';
-    }, 100);
-
-    // Player path and map
-
-    setInterval(() => {
-      scriptStateEl.textContent = this.currentScript
-        ? this.currentScript.currentAction
-        : '-';
-      currentMapEl.textContent = `${current_map}: ${map_names[current_map]}`;
-      playerPathEl.innerHTML = players[0]
-        ? players[0].path.map(pos => `i: ${pos.i}, j: ${pos.j}`).join('<br>')
-        : '';
-    }, 100);
-
-    document.body.addEventListener('mousemove', onMouseMove);
-  }
-
-  async addScriptButton(script: ScriptBase) {
-    const scriptsEl = $('.bot-panel .scripts') as HTMLDivElement;
-    const scriptBtn = document.createElement('button');
-
-    const runningText = `Stop ${script.name}`;
-    const stoppedText = `Run ${script.name}`;
-    const stoppingText = `Stopping...`;
-
-    scriptBtn.classList.add('script-button');
-    scriptBtn.dataset.name = script.name;
-    scriptBtn.textContent = stoppedText;
-
-    scriptBtn.onclick = async () => {
-      const otherScriptBtns = Array.from(
-        $all(`.script-button:not([data-name="${script.name}"])`)
-      ) as HTMLButtonElement[];
-
-      if (!script.running) {
-        this.currentScript = script;
-
-        for (const other of otherScriptBtns) {
-          other.disabled = true;
-        }
-
-        script.start();
-        scriptBtn.textContent = runningText;
-        return;
-      }
-
-      script.stop();
-      scriptBtn.disabled = true;
-      scriptBtn.textContent = stoppingText;
-
-      await waitUntil(() => !script.running);
-      delete this.currentScript;
-
-      for (const other of otherScriptBtns) {
-        other.disabled = false;
-      }
-
-      scriptBtn.disabled = false;
-      scriptBtn.textContent = stoppedText;
+    scriptListEl.onchange = () => {
+      this.currentScript = this.scripts[scriptListEl.value];
     };
 
-    scriptsEl.appendChild(scriptBtn);
+    startScriptEl.onclick = () => {
+      scriptListEl.disabled = true;
+      startScriptEl.disabled = true;
+      stopScriptEl.disabled = false;
+      this.currentScript.start();
+    };
+
+    stopScriptEl.onclick = async () => {
+      stopScriptEl.disabled = true;
+      this.currentScript.stop();
+      await waitUntil(() => !this.currentScript.running);
+      scriptListEl.disabled = false;
+      startScriptEl.disabled = false;
+    };
+
+    summaryEl.onclick = () => {
+      summaryEl.textContent = detailsEl.hasAttribute('open')
+        ? 'Show details'
+        : 'Hide details';
+    };
+
+    setInterval(() => {
+      this.updateVariables();
+    }, 100);
+
+    document.body.addEventListener('keydown', this.onKeyDown);
+    document.body.addEventListener(
+      'mousemove',
+      _.throttle(this.onMouseMove, 100)
+    );
+  };
+
+  updateVariables() {
+    const currentMapEl = $p('#current-map') as HTMLDivElement;
+    const playerPathEl = $p('#player-path') as HTMLDivElement;
+    const scriptStateEl = $p('#script-state') as HTMLDivElement;
+
+    scriptStateEl.textContent = (() => {
+      if (this.currentScript && this.currentScript.running) {
+        if (this.currentScript.stopFlag) {
+          return 'Stopping...';
+        }
+
+        if (this.currentScript.currentAction) {
+          return this.currentScript.currentAction;
+        }
+      }
+
+      return '-';
+    })();
+
+    currentMapEl.textContent = `${current_map}: ${map_names[current_map]}`;
+
+    const p = players[0];
+    playerPathEl.innerHTML =
+      p && p.path.length
+        ? `[${p.path.length}] i: ${p.path[0].i}, j: ${p.path[0].j}`
+        : '-';
+  }
+
+  onKeyDown(e: KeyboardEvent) {
+    if (e.key === 'Dead' && this.mouseTile.i) {
+      const obj = world.getObjectAt(this.mouseTile.i, this.mouseTile.j);
+      console.log(obj);
+    }
+  }
+
+  onMouseMove(e: MouseEvent) {
+    const mouseCoordsEl = $p('#mouse-coords') as HTMLDivElement;
+    const underMouseEl = $p('#under-mouse') as HTMLDivElement;
+    const tile = translateMousePosition(e.clientX, e.clientY);
+
+    this.mouseTile = tile;
+
+    if (!tile || !tile.i || !tile.j) {
+      return;
+    }
+
+    const obj = world.getObjectAt(tile.i, tile.j);
+
+    mouseCoordsEl.innerHTML = tile ? `i: ${tile.i}, j: ${tile.j}` : '-';
+    underMouseEl.innerHTML = obj ? obj.name : '-';
+  }
+
+  async addScriptToList(script: ScriptBase) {
+    const scriptListEl = $p('#script-list') as HTMLSelectElement;
+    const optionEl = document.createElement('option');
+
+    optionEl.textContent = script.name;
+    optionEl.value = script.name;
+
+    scriptListEl.appendChild(optionEl);
+    this.scripts[script.name] = script;
   }
 
   async addStyle() {

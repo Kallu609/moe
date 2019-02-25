@@ -1,15 +1,9 @@
 import { IPosition } from '../types/game';
 
-export function distance(pos1: IPosition, pos2: IPosition) {
-  return Math.abs(
-    Math.sqrt(
-      (pos1.i - pos2.i) * (pos1.i - pos2.i) +
-        (pos1.j - pos2.j) * (pos1.j - pos2.j)
-    )
-  );
-}
-
-export function sortByDistance(pos: IPosition, arrayOfPositions: IPosition[]) {
+export function sortByDistance(
+  playerPos: IPosition,
+  arrayOfPositions: IPosition[]
+) {
   const distanceArray = arrayOfPositions.map(x => {
     return {
       distance: Infinity,
@@ -17,11 +11,11 @@ export function sortByDistance(pos: IPosition, arrayOfPositions: IPosition[]) {
     };
   });
 
-  distanceArray.sort((a, b) => {
-    a.distance = distance(pos, a.pos);
-    b.distance = distance(pos, b.pos);
+  distanceArray.sort((npc1, npc2) => {
+    npc1.distance = distance(playerPos.i, playerPos.j, npc1.pos.i, npc1.pos.j);
+    npc2.distance = distance(playerPos.i, playerPos.j, npc2.pos.i, npc2.pos.j);
 
-    return a.distance - b.distance;
+    return npc1.distance - npc2.distance;
   });
 
   return distanceArray.map(x => x.pos);

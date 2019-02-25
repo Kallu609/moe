@@ -24,6 +24,9 @@ export class Bot {
     }
 
     captchaDetector();
+    pageHidden = () => {
+      // Replace original function
+    };
     logger.log('[@] Bot loaded.');
   }
 }
