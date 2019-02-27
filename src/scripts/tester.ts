@@ -1,4 +1,3 @@
-import { world } from '../lib/world';
 import { ScriptBase } from './scriptBase';
 
 export class TesterScript extends ScriptBase {
@@ -7,7 +6,6 @@ export class TesterScript extends ScriptBase {
   }
 
   test = async () => {
-    await world.useTeleport();
     this.stop();
   };
 }

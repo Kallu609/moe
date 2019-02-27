@@ -7,6 +7,7 @@ export abstract class ScriptBase {
   running: boolean;
   stopFlag: boolean = false;
   currentAction: string;
+  stopAction: () => void;
 
   constructor(public name: string) {}
 
@@ -37,11 +38,17 @@ export abstract class ScriptBase {
 
     this.running = false;
     this.stopFlag = false;
+    this.stopAction();
     logger.log(`[SCRIPT] "${this.name}" stopped`);
+  }
+
+  setStopAction(action: () => void) {
+    this.stopAction = action;
   }
 
   start() {
     this.running = true;
+    this.stopFlag = false;
     this.run();
     logger.log(`[SCRIPT] "${this.name}" started`);
   }

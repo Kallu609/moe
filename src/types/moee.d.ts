@@ -1,6 +1,7 @@
 import {
-    IArcheryCollision, IChestItem, IItemBase, IMapJsonItem, INpc, IObject, IPlayer, IPlayers,
-    IPosition, IResourceList, ISkills
+    IArcheryCollision, ICanPerformSkill, IChestItem, IClosestWalkablePosition, IItemBase,
+    IMapJsonItem, INpc, IObject, IPlayer, IPlayers, IPosition, IResourceList, ISkills,
+    ISortClosestTo
 } from './game';
 
 declare global {
@@ -33,6 +34,7 @@ declare global {
   let touch_hold: number;
   let touch_hold_i: number;
   let touch_hold_j: number;
+  let selected_object: IObject;
 
   const BASE_TYPE: any;
   const DEFAULT_FUNCTIONS: {
@@ -42,6 +44,19 @@ declare global {
 
   const movementInProgress: (player: IPlayer) => boolean;
   const nearEachOther: (object: IObject, player: IPlayer) => boolean;
+  const map_walkable: (map: number, i: number, j: number) => boolean;
+
+  const sortClosestTo: (
+    position: IPosition,
+    arrayOfPositions: IPosition[]
+  ) => ISortClosestTo;
+
+  const getClosestWalkablePosition: (
+    map: number,
+    i: number,
+    j: number
+  ) => IClosestWalkablePosition;
+
   const findPathFromTo: (
     player: IPlayer,
     pos: IPosition,
@@ -51,9 +66,9 @@ declare global {
   const needsProximity: (
     player: IPlayer,
     obj: IObject,
-    distance: number,
-    someVar?: number,
-    someVar2?: number
+    minDistance: number,
+    moveTo?: 0 | 1 | boolean,
+    idk?: number
   ) => boolean;
 
   const createElem: (
@@ -77,7 +92,14 @@ declare global {
   };
 
   const Player: {
+    auto_action(object: IObject): void;
     eat_food(): void;
+    update_combat_attributes(player: IPlayer): void;
+  };
+
+  const BigMenu: {
+    init_inventory(): void;
+    show_quiver(): void;
   };
 
   const Inventory: {
@@ -85,11 +107,17 @@ declare global {
     is_full(player: IPlayer): boolean;
     get_item_count(player: IPlayer, itemId: number | undefined): number;
     get_item_counts(player: IPlayer): number;
+    equip(player: IPlayer, itemId: number): boolean;
+    unequip(player: IPlayer, itemId: number): boolean;
   };
 
   const Chest: {
     is_open(): boolean;
     player_find_item_index(startIndex: number, itemId: number): number;
+  };
+
+  const LootCrate: {
+    remove(i: number, j: number, map: number): void;
   };
 
   const Archery: {
@@ -101,9 +129,14 @@ declare global {
     ): IArcheryCollision;
   };
 
+  const Skills: {
+    can_perform(player: IPlayer, targetId: number): ICanPerformSkill;
+  };
+
   const timer_holder: {
     [key: string]: number;
   };
+
   const Timers: {
     running(key: string): boolean;
     set(key: string, fn?: () => any, interval?: number): void;

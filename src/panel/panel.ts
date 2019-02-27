@@ -2,9 +2,12 @@ import * as _ from 'lodash';
 
 import { world } from '../lib/world';
 import { ArcheryScript } from '../scripts/archer';
+import { BottleFillerScript } from '../scripts/bottleFiller';
 import { DorpatMiningScript } from '../scripts/dorpatMining';
 import { FighterScript } from '../scripts/fighter';
 import { MiningGuildScript } from '../scripts/miningGuildMining';
+import { SandSmelterScript } from '../scripts/sandSmelter';
+import { SapphireDragonFighterScript } from '../scripts/sapphireDragonFighter';
 import { ScriptBase } from '../scripts/scriptBase';
 import { TesterScript } from '../scripts/tester';
 import { IPosition } from '../types/game';
@@ -36,14 +39,26 @@ export class Panel {
   }
 
   addScripts() {
+    this.addScriptToList(new SandSmelterScript('Sand smelter'));
+    this.addScriptToList(new BottleFillerScript('Bottle filler rakblood'));
     this.addScriptToList(new MiningGuildScript('Mining guild miner'));
     this.addScriptToList(new DorpatMiningScript('Dorpat miner'));
 
     this.addScriptToList(
       new FighterScript('Fighter', {
-        npcName: 'desert runner',
-        food: 'cooked cowfish',
-        chestPos: { i: 14, j: 33 },
+        npcName: 'minotaur',
+        foodName: 'cooked cowfish',
+        chestPos: { i: 22, j: 17 },
+        criticalHpPercent: 40,
+      })
+    );
+
+    this.addScriptToList(
+      new SapphireDragonFighterScript('Sapphire dragon fighter', {
+        npcName: 'sapphire dragon',
+        foodName: 'cooked cowfish',
+        chestPos: { i: 22, j: 17 },
+        criticalHpPercent: 40,
       })
     );
 
@@ -67,6 +82,7 @@ export class Panel {
 
     scriptListEl.onchange = () => {
       this.currentScript = this.scripts[scriptListEl.value];
+      startScriptEl.disabled = false;
     };
 
     startScriptEl.onclick = () => {
@@ -155,12 +171,21 @@ export class Panel {
 
   async addScriptToList(script: ScriptBase) {
     const scriptListEl = $p('#script-list') as HTMLSelectElement;
+    const startScriptEl = $p('#start-script') as HTMLButtonElement;
+    const stopScriptEl = $p('#stop-script') as HTMLButtonElement;
     const optionEl = document.createElement('option');
 
     optionEl.textContent = script.name;
     optionEl.value = script.name;
 
     scriptListEl.appendChild(optionEl);
+
+    script.setStopAction(() => {
+      scriptListEl.disabled = false;
+      startScriptEl.disabled = false;
+      stopScriptEl.disabled = true;
+    });
+
     this.scripts[script.name] = script;
   }
 

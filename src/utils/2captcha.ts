@@ -1,7 +1,7 @@
-import { fail } from 'assert';
 import * as queryString from 'query-string';
 
 import config from '../config';
+import * as logger from './logger';
 import { sleep, waitUntil } from './waitUntil';
 
 const $ = document.querySelector.bind(document);
@@ -10,23 +10,24 @@ const captchaBonusEl = $('#captcha_bonus_assign_form') as HTMLDivElement;
 const captchaResponseEl = $('#captcha_response') as HTMLSpanElement;
 
 export async function captchaDetector() {
+  let wrongCaptchaCounter = 0;
+
   while (true) {
     if (!captchaEl.getAttribute('style')!.includes('url')) {
       await sleep(3000);
       continue;
     }
 
-    let failSafe = 0;
+    logger.log('[CAPTCHA] Detected captcha image');
+    const image = getCaptchaBase64();
+    let captchaErrorCounter = 0;
 
     while (true) {
-      console.log('Detected captcha image');
-
-      const image = getCaptchaBase64();
       const answer = await solveCaptcha(image);
 
       if (answer) {
         Socket.send('captcha', { value: answer });
-        console.log('Captcha answer: ' + answer);
+        logger.log('[CAPTCHA] Captcha answer: ' + answer);
 
         await waitUntil(
           () =>
@@ -34,31 +35,46 @@ export async function captchaDetector() {
             captchaResponseEl.style.display === 'block'
         );
 
-        removeCaptchaImage();
-
         // Captcha FAILED
         if (captchaResponseEl.style.display === 'block') {
-          console.log('Failure answer');
+          logger.log('[CAPTCHA] Wrong captcha answer');
           captchaResponseEl.style.display = 'none';
-          await refreshCaptcha();
-          break;
+          wrongCaptchaCounter++;
+
+          if (wrongCaptchaCounter >= 3) {
+            logger.log('[CAPTCHA] Refreshing captcha');
+            wrongCaptchaCounter = 0;
+            await refreshCaptcha();
+            break;
+          }
+
+          continue;
         }
 
+        logger.log('[CAPTCHA] Successfully solved');
+
+        removeCaptchaImage();
         captcha = false; // Required by mo.ee
         penalty_bonus();
+
         await sleep(3000);
         captchaBonusEl.style.display = 'none';
+        wrongCaptchaCounter = 0;
         break;
       }
 
-      failSafe++;
+      captchaErrorCounter++;
 
-      if (failSafe >= 3) {
-        console.log('Failsafe counter exceeded');
+      if (captchaErrorCounter >= 3) {
+        logger.log(
+          '[CAPTCHA] Tried too many times without answer. Skipping captcha'
+        );
+        captchaEl.style.display = 'none';
+        removeCaptchaImage();
         break;
       }
 
-      console.log('No answer, trying again');
+      logger.log('[CAPTCHA] No answer, trying again');
     }
   }
 }
@@ -88,7 +104,7 @@ async function refreshCaptcha() {
 export function solveCaptcha(base64: string) {
   return new Promise(async (resolve, reject) => {
     if (!config.captchaApiKey) {
-      console.log('No 2captcha API key');
+      logger.log('[CAPTCHA] No 2captcha API key');
       return reject();
     }
 
@@ -109,14 +125,14 @@ export function solveCaptcha(base64: string) {
     const sendResponse = await sendRequest.text();
 
     if (!sendResponse.includes('OK')) {
-      console.log('Failed to solve captcha');
+      logger.log('[CAPTCHA] Failed to solve captcha');
       return reject();
     }
 
     const captchaId = sendResponse.split('|')[1];
 
     while (true) {
-      console.log('Checking for captcha answer');
+      // logger.log('[CAPTCHA] Checking for captcha answer');
 
       const resultRequest = await fetch(
         'http://2captcha.com/res.php?' +
@@ -135,7 +151,7 @@ export function solveCaptcha(base64: string) {
       } else if (readResponse.includes('NOT_READY')) {
         await sleep(5000);
       } else {
-        console.log('Error with captcha:', readResponse);
+        logger.log('[CAPTCHA] Error with captcha: ' + readResponse);
         return resolve(false);
       }
     }

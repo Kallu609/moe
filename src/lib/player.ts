@@ -1,6 +1,6 @@
 import * as _ from 'lodash';
 
-import { IObject } from '../types/game';
+import { IObject, IPosition } from '../types/game';
 import { log } from '../utils/logger';
 import { sleep, waitUntil } from '../utils/waitUntil';
 import { itemIdFromName } from './item';
@@ -19,6 +19,10 @@ export const player = {
     map_increase = 1000;
     players[0].path = world.pathTo(i, j);
     map_increase = oldMapIncrease;
+  },
+
+  moveToPos: (pos: IPosition) => {
+    return player.moveTo(pos.i, pos.j);
   },
 
   moveTo: (i: number, j: number) => {
@@ -43,7 +47,11 @@ export const player = {
         return true;
       }
 
-      if (players[0].path.length === 0 && !movementInProgress(players[0])) {
+      if (
+        players[0].path.length === 0 &&
+        !movementInProgress(players[0]) &&
+        !inAFight
+      ) {
         moveThrottled();
       }
 
@@ -52,18 +60,17 @@ export const player = {
   },
 
   attackNpc: async (npc: IObject) => {
-    Socket.send('set_target', { target: npc.id });
-    player.moveToBlind(npc.i, npc.j);
-    await waitUntil(() => players[0].path.length === 0);
-    const atFightPosition = +new Date();
-    await waitUntil(() => inAFight || +new Date() - atFightPosition > 500);
-  },
+    const closestPos = world.getNearestWalkablePosition(npc);
 
-  async runFromFight() {
-    while (players[0].temp.busy || inAFight) {
-      Socket.send('run_from_fight', {});
-      await sleep(500);
+    if (!closestPos) {
+      await sleep(1000);
+      return;
     }
+
+    player.moveToBlind(closestPos.i, closestPos.j);
+    Socket.send('set_target', { target: npc.id });
+    await waitUntil(() => inAFight || !players[0].path.length);
+    await sleep(1000);
   },
 
   attackNpcWithBow: async (npc: IObject) => {
@@ -99,6 +106,18 @@ export const player = {
         break;
       }
     }
+  },
+
+  async runFromFight() {
+    while (players[0].temp.busy || inAFight) {
+      Socket.send('run_from_fight', {});
+      await sleep(500);
+    }
+  },
+
+  async eatFood() {
+    Player.eat_food();
+    await sleep(500);
   },
 
   getMaxHp: () => skills[0].health.level,
@@ -148,6 +167,21 @@ export const player = {
       return Inventory.get_item_count(players[0], itemId);
     },
 
+    getFirstItemSlot: (item: string | number) => {
+      const itemId = typeof item === 'number' ? item : itemIdFromName(item);
+      let slotId = 0;
+
+      for (const invItem of players[0].temp.inventory) {
+        if (invItem.id === itemId) {
+          return slotId;
+        }
+
+        slotId++;
+      }
+
+      return undefined;
+    },
+
     getItemSlots: (itemName: string) => {
       const itemId = itemIdFromName(itemName);
       return players[0].temp.inventory
@@ -168,27 +202,78 @@ export const player = {
       }).length;
     },
 
-    async eatFood() {
-      const startHp = player.getCurrentHp();
-      Player.eat_food();
-      await waitUntil(() => player.getCurrentHp() > startHp + 2);
-      await sleep(500);
-    },
-
     getEquippedCount: () =>
       players[0].temp.inventory.filter(x => x.selected).length,
 
     getUnequippedCount: () =>
       players[0].temp.inventory.filter(x => !x.selected).length,
 
-    equip: (slotId: number) => {
-      Socket.send('equip', { data: { id: slotId } });
-      waitUntil(() => players[0].temp.inventory[slotId].selected);
+    async consume(item: string | number) {
+      const itemId = typeof item === 'number' ? item : itemIdFromName(item);
+      
+      if (!itemId) {
+        return;
+      }
+
+      const targetInvCount = players[0].temp.inventory.length - 1;
+      Socket.send('equip', { data: { id: itemId } });
+      await waitUntil(() => players[0].temp.inventory.length === targetInvCount);
     },
 
-    unequip: (slotId: number) => {
-      Socket.send('unequip', { data: { id: slotId } });
-      waitUntil(() => !players[0].temp.inventory[slotId].selected);
+    async equip(item: string | number) {
+      const itemId = typeof item === 'number' ? item : itemIdFromName(item);
+
+      if (!itemId) {
+        return;
+      }
+
+      const equipped = Inventory.equip(players[0], itemId);
+
+      if (equipped) {
+        const itemSlot = this.getFirstItemSlot(itemId);
+
+        if (!itemSlot) {
+          return;
+        }
+
+        BigMenu.init_inventory();
+        Socket.send('equip', { data: { id: itemId } });
+        Player.update_combat_attributes(players[0]);
+        BigMenu.show_quiver();
+
+        await waitUntil(() => players[0].temp.inventory[itemSlot].selected);
+        return true;
+      }
+
+      return false;
+    },
+
+    async unequip(item: string | number) {
+      const itemId = typeof item === 'number' ? item : itemIdFromName(item);
+
+      if (!itemId) {
+        return;
+      }
+
+      const equipped = Inventory.unequip(players[0], itemId);
+
+      if (equipped) {
+        const itemSlot = this.getFirstItemSlot(itemId);
+
+        if (!itemSlot) {
+          return;
+        }
+
+        BigMenu.init_inventory();
+        Socket.send('unequip', { data: { id: itemId } });
+        Player.update_combat_attributes(players[0]);
+        BigMenu.show_quiver();
+
+        await waitUntil(() => players[0].temp.inventory[itemSlot].selected);
+        return true;
+      }
+
+      return false;
     },
   },
 
@@ -204,9 +289,9 @@ export const player = {
       );
     },
 
-    load: () => {
+    async load() {
       if (!players[0].pet.enabled) {
-        return;
+        return false;
       }
 
       const targetInventoryCount =
@@ -215,44 +300,45 @@ export const player = {
           players[0].pet.chest.length);
 
       Socket.send('pet_chest_load', {});
-      return waitUntil(
+      await waitUntil(
         () => player.inventory.getAllItemsCount() === targetInventoryCount
       );
+
+      return true;
     },
-    unload: () => {
-      if (!players[0].pet.enabled) {
-        return;
+
+    async unload() {
+      if (!players[0].pet.enabled || !players[0].pet.chest.length) {
+        return false;
       }
 
+      const targetInvCount =
+        players[0].temp.inventory.length + players[0].pet.chest.length;
+
       Socket.send('pet_chest_unload', {});
-      return waitUntil(() => players[0].pet.chest.length === 0);
+      await waitUntil(
+        () => players[0].temp.inventory.length === targetInvCount
+      );
+
+      return true;
     },
   },
 
-  async mine(rockName: string) {
-    const rock = world.getNearObjectByName('Coal');
+  async useSkill(i: number, j: number) {
+    const obj = world.getObjectAt(i, j);
 
-    if (rock) {
-      this.mineAt(rock.i, rock.j);
-    }
-  },
-
-  async mineAt(i: number, j: number) {
-    const rock = world.getObjectAt(i, j);
-
-    if (!rock) {
+    if (!obj) {
       return;
     }
 
-    while (!Inventory.is_full(players[0])) {
-      const proximity = nearEachOther(rock, players[0]);
-
-      if (!proximity) {
-        break;
-      }
-
-      DEFAULT_FUNCTIONS.mine(rock, players[0]);
-      await waitUntil(() => !players[0].temp.busy);
+    if (!nearEachOther(obj, players[0])) {
+      const walkable = world.getNearestWalkablePosition(obj);
+      await player.moveToPos(walkable);
     }
+
+    selected_object = obj;
+    Player.auto_action(obj);
+
+    await waitUntil(() => timer_holder.auto_action === undefined);
   },
 };

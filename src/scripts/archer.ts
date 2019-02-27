@@ -82,7 +82,7 @@ export class ArcheryScript extends ScriptBase {
   getArrows = async () => {
     this.currentAction = 'Getting more arrows';
     await player.moveTo(this.options.chestPos.i, this.options.chestPos.j);
-    await world.chest.open();
+    await world.chest.openNear();
 
     if (!world.chest.getItemCount(this.options.arrowName)) {
       return this.stop();

@@ -68,7 +68,7 @@ export class DorpatMiningScript extends ScriptBase {
 
   depositItems = async () => {
     this.currentAction = 'Depositing items';
-    await world.chest.openAt(83, 38);
+    await world.chest.open(83, 38);
     await world.chest.depositAll();
     await this.sleep(3000, 7000);
   };

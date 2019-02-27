@@ -1,8 +1,8 @@
 import * as _ from 'lodash';
 
-import { IObject } from '../types/game';
+import { IObject, IPosition } from '../types/game';
 import { sortByDistance } from '../utils/math';
-import { sleep, waitUntil } from '../utils/waitUntil';
+import { waitUntil } from '../utils/waitUntil';
 import { itemIdFromName, itemIdsFromNames } from './item';
 import { player } from './player';
 
@@ -17,6 +17,35 @@ export const world = {
         !map_change_in_progress &&
         node_graphs[mapId]
     );
+  },
+
+  getAdjacentPositions(position: IPosition) {
+    return [
+      { i: position.i - 1, j: position.j },
+      { i: position.i + 1, j: position.j },
+      { i: position.i, j: position.j - 1 },
+      { i: position.i, j: position.j + 1 },
+    ];
+  },
+
+  getNearestWalkablePosition(position: IPosition | IObject) {
+    const sorted = sortClosestTo(
+      player.getPosition(),
+      world.getAdjacentPositions(position)
+    );
+
+    const oldMapIncrease = map_increase;
+    map_increase = 400;
+
+    const filtered = sorted.filter(
+      pos =>
+        map_walkable(current_map, pos.i, pos.j) &&
+        (world.getAdjacentPositions(pos).includes(position) ||
+          findPathFromTo(players[0], { i: pos.i, j: pos.j }, players[0]).length)
+    );
+
+    map_increase = oldMapIncrease;
+    return filtered[0];
   },
 
   getNearObjects() {
@@ -38,29 +67,39 @@ export const world = {
     return obj;
   },
 
-  async useTeleport() {
+  async useTeleportNear() {
     const nearTeleports = world
       .getNearObjects()
       .filter(x => x.params.to_map !== undefined);
     const teleport = nearTeleports[0];
 
     if (teleport) {
-      await this.useTeleportAt(teleport.i, teleport.j);
+      await this.useTeleport(teleport.i, teleport.j);
     }
   },
 
-  async useTeleportAt(i: number, j: number) {
-    const target = on_map[current_map][i][j];
+  async useTeleport(i: number, j: number) {
+    const obj = world.getObjectAt(i, j);
 
-    if (target.params && target.params.to_map !== undefined) {
-      Socket.send('teleport', { target_id: target.id });
+    if (!obj) {
+      return;
+    }
+
+    if (!nearEachOther(obj, players[0])) {
+      const walkable = world.getNearestWalkablePosition(obj);
+      await player.moveToPos(walkable);
+    }
+
+    if (obj.params && obj.params.to_map !== undefined) {
+      Socket.send('teleport', { target_id: obj.id });
+
       Object.keys(players).forEach(key => {
         if (Number(key) !== 0) {
           delete players[key];
         }
       });
 
-      await world.waitForMap(target.params.to_map);
+      await world.waitForMap(obj.params.to_map);
     }
   },
 
@@ -125,6 +164,45 @@ export const world = {
     return closest as IObject[];
   },
 
+  isLootCrate(o: IObject | false) {
+    return o && o.b_t === '1' && o.b_i === 555;
+  },
+
+  async destroyLootCrate(i: number, j: number) {
+    const obj = world.getObjectAt(i, j);
+
+    if (!obj) {
+      return;
+    }
+
+    if (this.isLootCrate(obj)) {
+      if (!nearEachOther(obj, players[0])) {
+        const walkable = world.getNearestWalkablePosition({ i, j });
+        await player.moveToPos(walkable);
+      }
+
+      Socket.send('loot_crate', {
+        map: current_map,
+        i,
+        j,
+        destroy: 1,
+      });
+      LootCrate.remove(i, j, current_map);
+
+      await waitUntil(() => {
+        const newObj = world.getObjectAt(i, j);
+
+        if (!newObj || !this.isLootCrate(newObj)) {
+          return true;
+        }
+
+        return false;
+      });
+
+      debugger;
+    }
+  },
+
   chest: {
     waitUntilOpened: () => waitUntil(() => Chest.is_open()),
 
@@ -138,18 +216,23 @@ export const world = {
       return itemId ? world.chest.getItemCountById(itemId) : 0;
     },
 
-    async open() {
+    async openNear() {
       const chest = world.getNearObjectByName('Chest');
 
       if (chest) {
-        await world.chest.openAt(chest.i, chest.j);
+        await world.chest.open(chest.i, chest.j);
       }
     },
 
-    async openAt(i: number, j: number) {
+    async open(i: number, j: number) {
       const chest = world.getObjectAt(i, j);
 
       if (chest) {
+        if (!nearEachOther(chest, players[0])) {
+          const walkPos = world.getNearestWalkablePosition(chest);
+          await player.moveToPos(walkPos);
+        }
+
         DEFAULT_FUNCTIONS.access(chest, players[0]);
         await world.chest.waitUntilOpened();
       }
@@ -248,7 +331,7 @@ export const world = {
       }
 
       const invCount = player.inventory.getAllItemsCount();
-      const targetCount = invCount + amount > 40 ? 40 : invCount;
+      const targetCount = invCount + amount > 40 ? 40 : invCount + amount;
 
       Socket.send('chest_withdraw', {
         item_id: itemId,
@@ -262,6 +345,8 @@ export const world = {
       await waitUntil(
         () => player.inventory.getAllItemsCount() === targetCount
       );
+
+      return chestItemCount - amount;
     },
   },
 };

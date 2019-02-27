@@ -297,3 +297,25 @@ export interface IArcheryCollision {
     j: number;
   }>;
 }
+
+export type ISortClosestTo = Array<{
+  i: number;
+  j: number;
+  d: number;
+}>;
+
+export interface IClosestWalkablePosition {
+  map: number;
+  i: number;
+  j: number;
+}
+
+export interface ICanPerformSkill {
+  status: boolean;
+  reason?: string;
+  result?: string;
+  returns?: string;
+  tool?: boolean;
+  type?: string;
+  has_levels?: boolean;
+}
