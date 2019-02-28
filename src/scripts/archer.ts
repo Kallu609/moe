@@ -4,7 +4,7 @@ import { world } from '../lib/world';
 import { IObject, IPosition } from '../types/game';
 import { sortByDistance } from '../utils/math';
 import { waitUntil } from '../utils/waitUntil';
-import { ScriptBase } from './scriptBase';
+import { ScriptBase } from './shared/scriptBase';
 
 interface IFighterScriptOptions {
   npcName: string;

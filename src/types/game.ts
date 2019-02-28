@@ -319,3 +319,10 @@ export interface ICanPerformSkill {
   type?: string;
   has_levels?: boolean;
 }
+
+export interface IShopSlot {
+  count: number;
+  id: number;
+  spawn?: boolean;
+  starting_count: number;
+}

@@ -1,6 +1,6 @@
 import { player } from '../lib/player';
 import { world } from '../lib/world';
-import { ScriptBase } from './scriptBase';
+import { ScriptBase } from './shared/scriptBase';
 
 export class MiningGuildScript extends ScriptBase {
   getAction() {
@@ -47,7 +47,8 @@ export class MiningGuildScript extends ScriptBase {
 
   depositItems = async () => {
     this.currentAction = 'Depositing items';
-    await world.chest.open(22, 17);
+    await player.moveTo(22, 18);
+    await world.chest.openNear();
     await world.chest.depositAll();
     await this.sleep(3000, 7000);
   };

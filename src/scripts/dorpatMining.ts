@@ -1,6 +1,6 @@
 import { player } from '../lib/player';
 import { world } from '../lib/world';
-import { ScriptBase } from './scriptBase';
+import { ScriptBase } from './shared/scriptBase';
 
 export class DorpatMiningScript extends ScriptBase {
   getAction() {

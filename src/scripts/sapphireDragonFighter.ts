@@ -3,8 +3,8 @@ import { player } from '../lib/player';
 import { world } from '../lib/world';
 import { IPosition } from '../types/game';
 import { waitUntil } from '../utils/waitUntil';
-import { ScriptBase } from './scriptBase';
-import { IPath, pathExecute } from './shared/pathExecute';
+import { IPath } from './shared/pathExecute';
+import { ScriptBase } from './shared/scriptBase';
 
 interface IFighterScriptOptions {
   npcName: string;
@@ -20,11 +20,18 @@ export class SapphireDragonFighterScript extends ScriptBase {
 
   getAction = () => {
     if (current_map === 0) {
+      if (
+        !player.inventory.getFoodCount() ||
+        !player.inventory.getItemCount('dorpat teleport')
+      ) {
+        return this.withdrawGear;
+      }
+
       return this.goToDungeon;
     }
 
     if (player.inventory.getFoodCount() === 0) {
-      return this.teleportAndWithdraw;
+      return this.useTeleport;
     }
 
     if (
@@ -61,9 +68,14 @@ export class SapphireDragonFighterScript extends ScriptBase {
         actions: ['move', 'use near teleport'],
         pos: [24, 88],
       },
+      {
+        actions: ['sleep'],
+        min: 500,
+        max: 1500,
+      },
     ];
 
-    await pathExecute(path);
+    await this.pathExecute(path);
   };
 
   attackNpc = async () => {
@@ -89,12 +101,16 @@ export class SapphireDragonFighterScript extends ScriptBase {
     await this.sleep(500, 2500);
   };
 
-  teleportAndWithdraw = async () => {
-    this.currentAction = 'Getting food';
-    const { chestPos, foodName } = this.options;
-
+  useTeleport = async () => {
+    this.currentAction = 'Teleporting';
     await player.inventory.consume('dorpat teleport');
     await world.waitForMap(0);
+    await this.sleep(1000, 3000);
+  };
+
+  withdrawGear = async () => {
+    this.currentAction = 'Getting food';
+    const { chestPos, foodName } = this.options;
 
     await world.chest.open(chestPos.i, chestPos.j);
     await world.chest.depositAll();

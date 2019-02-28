@@ -1,6 +1,6 @@
 import { player } from '../lib/player';
 import { world } from '../lib/world';
-import { ScriptBase } from './scriptBase';
+import { ScriptBase } from './shared/scriptBase';
 
 export class SandSmelterScript extends ScriptBase {
   getAction() {
@@ -37,8 +37,10 @@ export class SandSmelterScript extends ScriptBase {
 
     await player.useSkill(22, 24);
 
-    if (await player.pet.unload()) {
-      await player.useSkill(22, 24);
+    while (player.pet.hasItems()) {
+      if (await player.pet.unload()) {
+        await player.useSkill(22, 24);
+      }
     }
   };
 }

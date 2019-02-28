@@ -198,8 +198,6 @@ export const world = {
 
         return false;
       });
-
-      debugger;
     }
   },
 
@@ -347,6 +345,61 @@ export const world = {
       );
 
       return chestItemCount - amount;
+    },
+  },
+
+  shop: {
+    async open(i: number, j: number) {
+      const shopNpc = world.getObjectAt(i, j);
+
+      if (
+        !shopNpc ||
+        (!(typeof shop_opened === 'undefined' || !shop_opened) &&
+          !!shop_content.length)
+      ) {
+        return;
+      }
+
+      if (!nearEachOther(shopNpc, players[0])) {
+        const walkable = world.getNearestWalkablePosition(shopNpc);
+        await player.moveToPos(walkable);
+      }
+
+      shop_npc = shopNpc;
+      Socket.send('shop_open', { target: shopNpc.id });
+      Shop.activate_update();
+
+      await waitUntil(() => shop_opened && !!shop_content.length);
+    },
+
+    async buy(item: string | number, amount = 1) {
+      const itemId = typeof item === 'number' ? item : itemIdFromName(item);
+      const slotIndex = shop_content.findIndex(x => x.id === itemId);
+      const slot = shop_content.find(x => x.id === itemId);
+
+      if (slotIndex === -1 || !slot) {
+        return;
+      }
+
+      amount = amount > slot.count ? slot.count : amount;
+
+      if (!amount) {
+        return;
+      }
+
+      Socket.send('shop_buy', {
+        item_slot: slotIndex,
+        target: shop_npc.id,
+        amount,
+        t: timestamp(),
+      });
+
+      await waitUntil(() => players[0].temp.busy);
+      await waitUntil(() => !players[0].temp.busy);
+    },
+
+    async buyMax(item: string | number) {
+      await this.buy(item, player.inventory.getEmptyCount());
     },
   },
 };

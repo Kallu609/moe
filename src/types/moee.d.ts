@@ -1,6 +1,6 @@
 import {
     IArcheryCollision, ICanPerformSkill, IChestItem, IClosestWalkablePosition, IItemBase,
-    IMapJsonItem, INpc, IObject, IPlayer, IPlayers, IPosition, IResourceList, ISkills,
+    IMapJsonItem, INpc, IObject, IPlayer, IPlayers, IPosition, IResourceList, IShopSlot, ISkills,
     ISortClosestTo
 } from './game';
 
@@ -29,6 +29,9 @@ declare global {
   const chest_page: number;
   const chest_content: IChestItem[];
   const lastRunAwayAttempt: number;
+  const shop_content: IShopSlot[];
+  const shop_opened: boolean;
+  let shop_npc: IObject;
   let captcha: boolean;
   let map_increase: number;
   let touch_hold: number;
@@ -127,6 +130,10 @@ declare global {
       pos2: IPosition,
       map: number
     ): IArcheryCollision;
+  };
+
+  const Shop: {
+    activate_update(): void;
   };
 
   const Skills: {

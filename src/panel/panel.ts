@@ -8,7 +8,8 @@ import { FighterScript } from '../scripts/fighter';
 import { MiningGuildScript } from '../scripts/miningGuildMining';
 import { SandSmelterScript } from '../scripts/sandSmelter';
 import { SapphireDragonFighterScript } from '../scripts/sapphireDragonFighter';
-import { ScriptBase } from '../scripts/scriptBase';
+import { ScriptBase } from '../scripts/shared/scriptBase';
+import { ShopBuyerScript } from '../scripts/shopBuyer';
 import { TesterScript } from '../scripts/tester';
 import { IPosition } from '../types/game';
 import { waitUntil } from '../utils/waitUntil';
@@ -39,6 +40,11 @@ export class Panel {
   }
 
   addScripts() {
+    this.addScriptToList(
+      new ShopBuyerScript('Shop buyer', {
+        itemName: 'fir log',
+      })
+    );
     this.addScriptToList(new SandSmelterScript('Sand smelter'));
     this.addScriptToList(new BottleFillerScript('Bottle filler rakblood'));
     this.addScriptToList(new MiningGuildScript('Mining guild miner'));

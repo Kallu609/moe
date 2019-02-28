@@ -157,6 +157,7 @@ export const player = {
     waitUntilFull: () => waitUntil(() => Inventory.is_full(players[0])),
     isFull: () => Inventory.is_full(players[0]),
     getAllItemsCount: () => players[0].temp.inventory.length,
+    getEmptyCount: () => 40 - players[0].temp.inventory.length,
     getItemIdsAndCounts: () => Inventory.get_item_counts(players[0]),
 
     getItemCount: (itemName: string) => {
@@ -210,14 +211,16 @@ export const player = {
 
     async consume(item: string | number) {
       const itemId = typeof item === 'number' ? item : itemIdFromName(item);
-      
+
       if (!itemId) {
         return;
       }
 
       const targetInvCount = players[0].temp.inventory.length - 1;
       Socket.send('equip', { data: { id: itemId } });
-      await waitUntil(() => players[0].temp.inventory.length === targetInvCount);
+      await waitUntil(
+        () => players[0].temp.inventory.length === targetInvCount
+      );
     },
 
     async equip(item: string | number) {
@@ -278,7 +281,7 @@ export const player = {
   },
 
   pet: {
-    isFull: () => {
+    isFull() {
       if (!players[0].pet.enabled) {
         return true;
       }
@@ -289,21 +292,30 @@ export const player = {
       );
     },
 
+    hasItems() {
+      if (!players[0].pet.enabled) {
+        return false;
+      }
+
+      return players[0].pet.chest.length >= 1;
+    },
+
     async load() {
       if (!players[0].pet.enabled) {
         return false;
       }
 
-      const targetInventoryCount =
+      const targetInvCount =
         player.inventory.getAllItemsCount() -
         (pets[players[0].pet.id].params.inventory_slots -
           players[0].pet.chest.length);
 
+      await waitUntil(() => !players[0].temp.busy);
       Socket.send('pet_chest_load', {});
-      await waitUntil(
-        () => player.inventory.getAllItemsCount() === targetInventoryCount
-      );
 
+      await waitUntil(
+        () => player.inventory.getAllItemsCount() === targetInvCount
+      );
       return true;
     },
 
@@ -312,8 +324,10 @@ export const player = {
         return false;
       }
 
+      const invItemCount = players[0].temp.inventory.length;
+      const petItemCount = players[0].pet.chest.length;
       const targetInvCount =
-        players[0].temp.inventory.length + players[0].pet.chest.length;
+        invItemCount + petItemCount > 40 ? 40 : invItemCount + petItemCount;
 
       Socket.send('pet_chest_unload', {});
       await waitUntil(

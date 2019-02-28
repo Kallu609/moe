@@ -1,15 +1,20 @@
 import * as _ from 'lodash';
 
-import * as logger from '../utils/logger';
-import { sleep } from '../utils/waitUntil';
+import * as logger from '../../utils/logger';
+import { sleep } from '../../utils/waitUntil';
+import { IPath, PathExecutor } from './pathExecute';
 
 export abstract class ScriptBase {
   running: boolean;
   stopFlag: boolean = false;
   currentAction: string;
   stopAction: () => void;
+  pathExecute: (path: IPath[]) => Promise<void>;
 
-  constructor(public name: string) {}
+  constructor(public name: string) {
+    const pathExecutor = new PathExecutor(this);
+    this.pathExecute = pathExecutor.pathExecute;
+  }
 
   abstract getAction(): () => void;
 

@@ -1,4 +1,4 @@
-import { ScriptBase } from './scriptBase';
+import { ScriptBase } from './shared/scriptBase';
 
 export class TesterScript extends ScriptBase {
   getAction() {
