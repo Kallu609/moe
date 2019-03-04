@@ -5,12 +5,14 @@ import { ArcheryScript } from '../scripts/archer';
 import { BottleFillerScript } from '../scripts/bottleFiller';
 import { DorpatMiningScript } from '../scripts/dorpatMining';
 import { FighterScript } from '../scripts/fighter';
+import { ForgerScript } from '../scripts/forger';
 import { MiningGuildScript } from '../scripts/miningGuildMining';
 import { SandSmelterScript } from '../scripts/sandSmelter';
 import { SapphireDragonFighterScript } from '../scripts/sapphireDragonFighter';
 import { ScriptBase } from '../scripts/shared/scriptBase';
 import { ShopBuyerScript } from '../scripts/shopBuyer';
 import { TesterScript } from '../scripts/tester';
+import { WoodcutterScript } from '../scripts/woodcutter';
 import { IPosition } from '../types/game';
 import { waitUntil } from '../utils/waitUntil';
 
@@ -18,6 +20,8 @@ const $ = document.querySelector.bind(document);
 let $p: any;
 
 export class Panel {
+  public socketTrafficOut: boolean = false;
+  public socketTrafficIn: boolean = false;
   private URL_BASE = 'http://localhost:8080/';
   private scripts: {
     [name: string]: ScriptBase;
@@ -51,19 +55,33 @@ export class Panel {
     this.addScriptToList(new DorpatMiningScript('Dorpat miner'));
 
     this.addScriptToList(
+      new WoodcutterScript('Woodcutter', {
+        treePos: [70, 18],
+        nearChestPos: [14, 33],
+      })
+    );
+
+    this.addScriptToList(
+      new ForgerScript('Forger', {
+        materialName: 'oak log',
+        produceName: 'oak stick',
+      })
+    );
+
+    this.addScriptToList(
       new FighterScript('Fighter', {
         npcName: 'minotaur',
         foodName: 'cooked cowfish',
-        chestPos: { i: 22, j: 17 },
+        chestPos: [22, 17],
         criticalHpPercent: 40,
       })
     );
 
     this.addScriptToList(
-      new SapphireDragonFighterScript('Sapphire dragon fighter', {
-        npcName: 'sapphire dragon',
+      new SapphireDragonFighterScript('Ruby dragon fighter', {
+        npcName: 'ruby dragon',
         foodName: 'cooked cowfish',
-        chestPos: { i: 22, j: 17 },
+        chestPos: [22, 17],
         criticalHpPercent: 40,
       })
     );
@@ -71,7 +89,7 @@ export class Panel {
     this.addScriptToList(
       new ArcheryScript('Archer', {
         npcName: 'Dragonfly',
-        chestPos: { i: 83, j: 37 },
+        chestPos: [83, 37],
         arrowName: 'bronze cactus arrow',
       })
     );
@@ -85,6 +103,8 @@ export class Panel {
     const scriptListEl = $p('#script-list') as HTMLSelectElement;
     const startScriptEl = $p('#start-script') as HTMLButtonElement;
     const stopScriptEl = $p('#stop-script') as HTMLButtonElement;
+    const socketTrafficOutEl = $p('#socket-traffic-out') as HTMLInputElement;
+    const socketTrafficInEl = $p('#socket-traffic-in') as HTMLInputElement;
 
     scriptListEl.onchange = () => {
       this.currentScript = this.scripts[scriptListEl.value];
@@ -110,6 +130,14 @@ export class Panel {
       summaryEl.textContent = detailsEl.hasAttribute('open')
         ? 'Show details'
         : 'Hide details';
+    };
+
+    socketTrafficOutEl.onchange = () => {
+      this.socketTrafficOut = socketTrafficOutEl.checked;
+    };
+
+    socketTrafficInEl.onchange = () => {
+      this.socketTrafficIn = socketTrafficInEl.checked;
     };
 
     setInterval(() => {

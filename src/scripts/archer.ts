@@ -1,15 +1,13 @@
 import { itemIdFromName } from '../lib/item';
 import { player } from '../lib/player';
 import { world } from '../lib/world';
-import { IObject, IPosition } from '../types/game';
-import { sortByDistance } from '../utils/math';
 import { waitUntil } from '../utils/waitUntil';
 import { ScriptBase } from './shared/scriptBase';
 
 interface IFighterScriptOptions {
   npcName: string;
   arrowName: string;
-  chestPos: IPosition;
+  chestPos: [number, number];
 }
 
 export class ArcheryScript extends ScriptBase {
@@ -81,7 +79,9 @@ export class ArcheryScript extends ScriptBase {
 
   getArrows = async () => {
     this.currentAction = 'Getting more arrows';
-    await player.moveTo(this.options.chestPos.i, this.options.chestPos.j);
+    const [i, j] = this.options.chestPos;
+
+    await player.moveTo(i, j);
     await world.chest.openNear();
 
     if (!world.chest.getItemCount(this.options.arrowName)) {

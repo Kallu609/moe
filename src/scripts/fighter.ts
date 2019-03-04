@@ -8,8 +8,8 @@ import { ScriptBase } from './shared/scriptBase';
 interface IFighterScriptOptions {
   npcName: string;
   foodName: string;
-  chestPos: IPosition;
   criticalHpPercent: number;
+  chestPos: [number, number];
 }
 
 export class FighterScript extends ScriptBase {
@@ -62,8 +62,9 @@ export class FighterScript extends ScriptBase {
   walkToChestAndWithdrawFood = async () => {
     this.currentAction = 'Getting food';
     const { chestPos, foodName } = this.options;
+    const [i, j] = chestPos;
 
-    await world.chest.open(chestPos.i, chestPos.j);
+    await world.chest.open(i, j);
     await world.chest.depositAll();
 
     if (!world.chest.getItemCount(foodName)) {

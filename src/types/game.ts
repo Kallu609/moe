@@ -326,3 +326,20 @@ export interface IShopSlot {
   spawn?: boolean;
   starting_count: number;
 }
+
+export interface IForgeFormulas {
+  item_id: number;
+  level?: number;
+  chance: number;
+  pattern: number[][];
+  material_count: number;
+  materials: { [key: string]: number };
+  xp: number;
+  overall_level: number;
+  id: string;
+  fletching_level?: number;
+  no_smelt?: boolean;
+  wizardry_level?: number;
+  hidden?: boolean;
+  recycle_chance?: number;
+}

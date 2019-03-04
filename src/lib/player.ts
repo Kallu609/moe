@@ -1,7 +1,6 @@
 import * as _ from 'lodash';
 
 import { IObject, IPosition } from '../types/game';
-import { log } from '../utils/logger';
 import { sleep, waitUntil } from '../utils/waitUntil';
 import { itemIdFromName } from './item';
 import { world } from './world';
@@ -10,32 +9,28 @@ export const player = {
   atPosition: (i: number, j: number) =>
     players[0].i === i && players[0].j === j,
 
-  getPosition: () => {
+  getPosition() {
     return { i: players[0].i, j: players[0].j };
   },
 
-  moveToBlind: (i: number, j: number) => {
+  moveToBlind(i: number, j: number) {
     const oldMapIncrease = map_increase;
     map_increase = 1000;
     players[0].path = world.pathTo(i, j);
     map_increase = oldMapIncrease;
   },
 
-  moveToPos: (pos: IPosition) => {
+  moveToPos(pos: IPosition) {
     return player.moveTo(pos.i, pos.j);
   },
 
-  moveTo: (i: number, j: number) => {
+  moveTo(i: number, j: number) {
     if (!players[0]) {
-      log(`Can't move to ${i}, ${j}. Can't find player`);
       return;
     }
 
     const moveThrottled = _.throttle(() => {
-      const oldMapIncrease = map_increase;
-      map_increase = 1000;
-      players[0].path = world.pathTo(i, j);
-      map_increase = oldMapIncrease;
+      this.moveToBlind(i, j);
     }, 1000);
 
     return waitUntil(() => {
@@ -59,7 +54,7 @@ export const player = {
     });
   },
 
-  attackNpc: async (npc: IObject) => {
+  async attackNpc(npc: IObject) {
     const closestPos = world.getNearestWalkablePosition(npc);
 
     if (!closestPos) {
@@ -69,11 +64,25 @@ export const player = {
 
     player.moveToBlind(closestPos.i, closestPos.j);
     Socket.send('set_target', { target: npc.id });
-    await waitUntil(() => inAFight || !players[0].path.length);
-    await sleep(1000);
+    await waitUntil(
+      () =>
+        inAFight || !players[0].path.length || world.someoneElseFighting(npc)
+    );
+    await sleep(500);
   },
 
-  attackNpcWithBow: async (npc: IObject) => {
+  async attackClosest(npcName: string) {
+    const npcs = world.getClosestNpcsSorted(npcName);
+
+    for (const npc of npcs) {
+      if (!world.someoneElseFighting(npc)) {
+        await this.attackNpc(npc);
+        break;
+      }
+    }
+  },
+
+  async attackNpcWithBow(npc: IObject) {
     const npcDead = () => {
       const currentObj = world.getObjectAt(npc.i, npc.j);
       return !currentObj || npc.id !== currentObj.id;
@@ -157,6 +166,10 @@ export const player = {
     waitUntilFull: () => waitUntil(() => Inventory.is_full(players[0])),
     isFull: () => Inventory.is_full(players[0]),
     getAllItemsCount: () => players[0].temp.inventory.length,
+    getEquippedCount: () =>
+      players[0].temp.inventory.filter(x => x.selected).length,
+    getUnequippedCount: () =>
+      players[0].temp.inventory.filter(x => !x.selected).length,
     getEmptyCount: () => 40 - players[0].temp.inventory.length,
     getItemIdsAndCounts: () => Inventory.get_item_counts(players[0]),
 
@@ -202,12 +215,6 @@ export const player = {
         return item_base[item.id].params.heal !== undefined;
       }).length;
     },
-
-    getEquippedCount: () =>
-      players[0].temp.inventory.filter(x => x.selected).length,
-
-    getUnequippedCount: () =>
-      players[0].temp.inventory.filter(x => !x.selected).length,
 
     async consume(item: string | number) {
       const itemId = typeof item === 'number' ? item : itemIdFromName(item);
@@ -305,16 +312,18 @@ export const player = {
         return false;
       }
 
-      const targetInvCount =
-        player.inventory.getAllItemsCount() -
-        (pets[players[0].pet.id].params.inventory_slots -
-          players[0].pet.chest.length);
+      const targetInvCount = Math.max(
+        player.inventory.getUnequippedCount() -
+          (pets[players[0].pet.id].params.inventory_slots -
+            players[0].pet.chest.length),
+        0
+      );
 
       await waitUntil(() => !players[0].temp.busy);
       Socket.send('pet_chest_load', {});
 
       await waitUntil(
-        () => player.inventory.getAllItemsCount() === targetInvCount
+        () => player.inventory.getUnequippedCount() === targetInvCount
       );
       return true;
     },
@@ -336,7 +345,7 @@ export const player = {
 
       return true;
     },
-  },
+  }, //
 
   async useSkill(i: number, j: number) {
     const obj = world.getObjectAt(i, j);
@@ -353,6 +362,48 @@ export const player = {
     selected_object = obj;
     Player.auto_action(obj);
 
-    await waitUntil(() => timer_holder.auto_action === undefined);
+    await waitUntil(() => typeof timer_holder.auto_action === 'undefined');
+  },
+
+  async forge(itemName: string, anvilI: number, anvilJ: number) {
+    const obj = world.getObjectAt(anvilI, anvilJ);
+    const itemId = itemIdFromName(itemName);
+
+    if (!obj || !itemId) {
+      return;
+    }
+
+    const formula = (() => {
+      for (const f of Object.values(FORGE_FORMULAS)) {
+        if (f.item_id === itemId) {
+          return f;
+        }
+      }
+
+      return undefined;
+    })();
+
+    if (!formula) {
+      return;
+    }
+
+    Forge.active_formula = Number(formula.id);
+    Forge.anvil_id = 7805;
+    Forge.forging_open();
+    await waitUntil(() => !!document.querySelector('#forging-progress-span'));
+    Forge.make_all();
+
+    const getMaterialCount = () =>
+      player.inventory.getItemCountById(
+        Number(Object.keys(formula.materials)[0])
+      );
+
+    const materialCount = getMaterialCount();
+    const targetInvCount =
+      materialCount -
+      formula.material_count *
+        Math.floor(materialCount / formula.material_count);
+
+    await waitUntil(() => getMaterialCount() === targetInvCount);
   },
 };

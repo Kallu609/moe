@@ -7,6 +7,7 @@ import { sleep } from './utils/waitUntil';
 
 export class Bot {
   panel: Panel;
+  ws: WebSocket;
 
   constructor() {
     this.start();
@@ -23,12 +24,77 @@ export class Bot {
       }
     }
 
+    this.startWebSocket();
+    this.chatTextProxy();
+    this.socketOutProxy();
+    this.socketInProxy();
+
     captchaDetector();
     pageHidden = () => {
       // Replace original function
     };
     logger.log('[@] Bot loaded.');
   }
+
+  socketOutProxy() {
+    const fnOriginal = Socket.send;
+    const proxy = new Proxy(fnOriginal, {
+      apply: (fn, ctx, args) => {
+        if (this.panel.socketTrafficOut) {
+          console.log('[SOCKET] ->', args);
+        }
+
+        return fn.apply(ctx, args);
+      },
+    });
+
+    Socket.send = proxy;
+  }
+
+  socketInProxy() {
+    socket.on('message', (data: any) => {
+      if (this.panel.socketTrafficIn) {
+        console.log('[SOCKET] <-', data);
+      }
+    });
+  }
+
+  chatTextProxy() {
+    const fnOriginal = addChatText;
+    const proxy = new Proxy(fnOriginal, {
+      apply: (fn, ctx, args) => {
+        if (this.ws && this.ws.readyState === 1) {
+          this.ws.send(JSON.stringify(args));
+        }
+
+        return fn.apply(ctx, args);
+      },
+    });
+
+    addChatText = proxy;
+  }
+
+  startWebSocket = () => {
+    this.ws = new WebSocket('ws://localhost:1337');
+
+    this.ws.onopen = () => {
+      console.log('Connected to websocket');
+    };
+
+    this.ws.onmessage = (ev: MessageEvent) => {
+      const data = JSON.parse(ev.data);
+
+      if (data.type === 'chat message') {
+        Socket.send('message', { data: data.text, lang: data.channel });
+      }
+    };
+
+    this.ws.onclose = () => {
+      setTimeout(() => {
+        this.startWebSocket();
+      }, 2500);
+    };
+  };
 }
 
 (() => {

@@ -9,7 +9,7 @@ import { ScriptBase } from './shared/scriptBase';
 interface IFighterScriptOptions {
   npcName: string;
   foodName: string;
-  chestPos: IPosition;
+  chestPos: [number, number];
   criticalHpPercent: number;
 }
 
@@ -73,6 +73,22 @@ export class SapphireDragonFighterScript extends ScriptBase {
         min: 500,
         max: 1500,
       },
+      {
+        actions: ['move'],
+        pos: [24, 88],
+      },
+      {
+        actions: ['move'],
+        pos: [24, 87],
+      },
+      {
+        actions: ['kill', 'move'],
+        pos: [27, 86],
+      },
+      {
+        actions: ['kill', 'move'],
+        pos: [29, 87],
+      },
     ];
 
     await this.pathExecute(path);
@@ -80,9 +96,7 @@ export class SapphireDragonFighterScript extends ScriptBase {
 
   attackNpc = async () => {
     this.currentAction = 'Attacking NPC';
-
-    const npc = world.getClosestNpc(this.options.npcName);
-    await player.attackNpc(npc);
+    await player.attackClosest(this.options.npcName);
   };
 
   waitUntilFightDone = async () => {
@@ -111,8 +125,9 @@ export class SapphireDragonFighterScript extends ScriptBase {
   withdrawGear = async () => {
     this.currentAction = 'Getting food';
     const { chestPos, foodName } = this.options;
+    const [i, j] = chestPos;
 
-    await world.chest.open(chestPos.i, chestPos.j);
+    await world.chest.open(i, j);
     await world.chest.depositAll();
 
     if (

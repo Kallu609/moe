@@ -1,7 +1,7 @@
 import {
-    IArcheryCollision, ICanPerformSkill, IChestItem, IClosestWalkablePosition, IItemBase,
-    IMapJsonItem, INpc, IObject, IPlayer, IPlayers, IPosition, IResourceList, IShopSlot, ISkills,
-    ISortClosestTo
+    IArcheryCollision, ICanPerformSkill, IChestItem, IClosestWalkablePosition,
+    IForgeFormulas as IForgeFormula, IItemBase, IMapJsonItem, INpc, IObject, IPlayer, IPlayers,
+    IPosition, IResourceList, IShopSlot, ISkills, ISortClosestTo
 } from './game';
 
 declare global {
@@ -44,6 +44,7 @@ declare global {
     access(object: IObject, player: IPlayer): void;
     mine(object: IObject, player: IPlayer): void;
   };
+  const FORGE_FORMULAS: IForgeFormula[];
 
   const movementInProgress: (player: IPlayer) => boolean;
   const nearEachOther: (object: IObject, player: IPlayer) => boolean;
@@ -83,6 +84,12 @@ declare global {
   ) => void;
 
   let pageHidden: () => void;
+  let addChatText: (
+    message: string,
+    user?: string,
+    color?: string,
+    type?: string
+  ) => void;
   const closeAllActiveWindows: () => void;
   const do_login: (username: string, password: string) => void;
   const timestamp: () => number;
@@ -123,6 +130,16 @@ declare global {
     remove(i: number, j: number, map: number): void;
   };
 
+  const Forge: {
+    active_formula: number;
+    anvil_id: false | number;
+    make_in_progress: boolean;
+    continous: boolean;
+    continous_make_enabled: boolean;
+    make_all(): void;
+    forging_open(): void;
+  };
+
   const Archery: {
     client_use(player: IPlayer, target: IObject, d?: any): void;
     bresenham_collision(
@@ -154,6 +171,7 @@ declare global {
     render(): void;
   };
 
+  const socket: any;
   const Socket: {
     send(name: string, value: any): void;
   };

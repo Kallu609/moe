@@ -164,6 +164,19 @@ export const world = {
     return closest as IObject[];
   },
 
+  someoneElseFighting(npc: IObject) {
+    const otherPlayersVals = Object.values(players);
+    const otherPlayers = otherPlayersVals.slice(1, otherPlayersVals.length);
+
+    return otherPlayers.some(
+      p =>
+        p.b_t === '5' &&
+        world
+          .getAdjacentPositions({ i: npc.i, j: npc.j })
+          .some(adj => adj.i === p.i && adj.j === p.j)
+    );
+  },
+
   isLootCrate(o: IObject | false) {
     return o && o.b_t === '1' && o.b_i === 555;
   },
