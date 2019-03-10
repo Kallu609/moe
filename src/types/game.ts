@@ -2,7 +2,6 @@ export interface IPosition {
   i: number;
   j: number;
 }
-
 export interface IObject {
   id: number;
   b_i: number;
@@ -11,11 +10,25 @@ export interface IObject {
   j: number;
   map: number;
   params: {
+    combat_level: number;
     desc: string;
     to_map: number;
     to_i: number;
     to_j: number;
     requires_one_from: number[];
+    results: {
+      skill: string;
+      continuous: boolean;
+      returns: Array<{
+        id: number;
+        level: number;
+        base_chance: number;
+        max_chance: number;
+        next: boolean;
+        duration: number;
+        xp: number;
+      }>;
+    };
   };
   name: string;
   img: {
@@ -27,6 +40,17 @@ export interface IObject {
   type: number;
   activities: string[];
   temp: any;
+}
+
+export interface IObjectType {
+  DUMMY: number;
+  TREE: number;
+  STONE: number;
+  ENEMY: number;
+  SHOP: number;
+  FISH: number;
+  COOKING: number;
+  FARMING: number;
 }
 
 export interface IMapJsonItem {
@@ -343,3 +367,36 @@ export interface IForgeFormulas {
   hidden?: boolean;
   recycle_chance?: number;
 }
+
+export interface INodeGraphs {
+  [key: number]: {
+    input: number[][];
+    nodes: Array<
+      Array<{
+        data: object;
+        pos: { x: number; y: number };
+        type: 0 | 1;
+        x: number;
+        y: number;
+        isWall: () => boolean;
+      }>
+    >;
+  };
+}
+
+export interface ISkillingObject {
+  requires_one_from: number[];
+  skill: string;
+  continuous: boolean;
+  returns: Array<{
+    id: number;
+    level: number;
+    base_chance: number;
+    max_chance: number;
+    next: boolean;
+    duration: number;
+    xp: number;
+  }>;
+}
+
+export interface Return {}

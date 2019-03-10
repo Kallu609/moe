@@ -1,73 +1,142 @@
+import combat from '../../lib/combat';
 import { player } from '../../lib/player';
 import { world } from '../../lib/world';
-import { sleep, waitUntil } from '../../utils/waitUntil';
+import { sleep, sleepRandom } from '../../utils/waitUntil';
 import { ScriptBase } from './scriptBase';
 
-type ActionTypes =
-  | 'kill'
-  | 'move'
-  | 'use teleport'
-  | 'use near teleport'
-  | 'sleep';
+type ActionArguments = Array<string | number> | undefined;
 
 export interface IPath {
-  actions: ActionTypes[];
-  pos?: [number, number];
-  min?: number;
-  max?: number;
+  actions: string[];
+  args: ActionArguments;
 }
 
 export class PathExecutor {
+  stopFlag = false;
+  private criticalHpPercent: number;
+
   constructor(private script: ScriptBase) {}
 
-  pathExecute = async (path: IPath[]) => {
-    for (const { actions, pos, min, max } of path) {
-      if (actions.includes('kill')) {
-        if (!pos) {
+  pathExecute = async (pathText: string) => {
+    const path = this.loadPath(pathText);
+
+    for (const { actions, args } of path) {
+      for (const action of actions) {
+        if (this.stopFlag) {
+          this.stopFlag = false;
           return;
         }
 
-        const [i, j] = pos;
-        const npc = world.getObjectAt(i, j);
+        console.log(action, args);
+        await this.processAction(action, args);
+      }
+    }
+  };
 
-        if (npc && npc.b_t === BASE_TYPE.NPC) {
-          await player.attackNpc(npc);
-          await waitUntil(() => !players[0].temp.busy && !inAFight);
-          await sleep(100);
-          await world.destroyLootCrate(i, j);
+  private loadPath(pathText: string) {
+    const path: IPath[] = [];
+
+    for (let line of pathText.split('\n')) {
+      line = line.trim().replace(/ +(?= )/g, '');
+
+      if (!line || line.startsWith('//')) {
+        continue;
+      }
+
+      const actions = line
+        .split('[')[0]
+        .split(',')
+        .map(action => action.trim());
+
+      const args = line.includes('[')
+        ? line
+            .split('[')[1]
+            .split(']')[0]
+            .split(',')
+            .map(arg => (!isNaN(+arg.trim()) ? Number(arg.trim()) : arg))
+        : undefined;
+
+      path.push({
+        actions,
+        args,
+      });
+    }
+
+    return path;
+  }
+
+  private processAction = async (action: string, args: ActionArguments) => {
+    if (action === 'set critical hp') {
+      if (!args) {
+        return;
+      }
+
+      const [criticalHpPercent] = args as number[];
+      this.criticalHpPercent = criticalHpPercent;
+    }
+
+    if (action === 'kill') {
+      if (!args) {
+        return;
+      }
+
+      const [i, j] = args as number[];
+      let npc = world.getObjectAt(i, j);
+
+      if (!world.pathTo(i, j).length) {
+        return;
+      }
+
+      while (npc && npc.b_t === BASE_TYPE.NPC) {
+        if (player.isCriticalHp(this.criticalHpPercent)) {
+          if (player.inventory.getFoodCount() === 0) {
+            await this.script.stop();
+            await player.logout();
+            this.stopFlag = true;
+          }
+
+          await player.eatFood();
+          await sleepRandom(500, 1000);
         }
+
+        await combat.attackNpc(npc);
+        await combat.waitUntilFightDone(this.criticalHpPercent);
+        npc = world.getObjectAt(i, j);
       }
 
-      if (actions.includes('move')) {
-        if (!pos) {
-          return;
-        }
+      await sleep(100);
+      return world.destroyLootCrate(i, j);
+    }
 
-        const [i, j] = pos;
-        await world.destroyLootCrate(i, j);
-        await player.moveTo(i, j);
+    if (action === 'move') {
+      if (!args) {
+        return;
       }
 
-      if (actions.includes('use teleport')) {
-        if (!pos) {
-          return;
-        }
+      const [i, j] = args as number[];
+      return world.destroyLootCrate(i, j);
+    }
 
-        const [i, j] = pos;
-        await world.useTeleport(i, j);
+    if (action === 'use teleport') {
+      if (!args) {
+        return;
       }
 
-      if (actions.includes('use near teleport')) {
-        await world.useTeleportNear();
+      const [i, j] = args as number[];
+      return world.useTeleport(i, j);
+    }
+
+    if (action === 'use near teleport') {
+      return world.useTeleportNear();
+    }
+
+    if (action === 'sleep') {
+      if (!args) {
+        return;
       }
 
-      if (actions.includes('sleep')) {
-        if (!min || !max) {
-          return;
-        }
-
-        await this.script.sleep(min, max);
-      }
+      const [min, max] = args as number[];
+      return this.script.sleep(min, max);
     }
   };
 }

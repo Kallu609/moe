@@ -1,6 +1,6 @@
 import { player } from '../lib/player';
 import { world } from '../lib/world';
-import { sleep, sleepRandom } from '../utils/waitUntil';
+import { sleepRandom } from '../utils/waitUntil';
 import { ScriptBase } from './shared/scriptBase';
 
 interface IWoodcutterOptions {

@@ -1,20 +1,18 @@
+import combat from '../lib/combat';
 import { getFoodHealAmount } from '../lib/item';
 import { player } from '../lib/player';
 import { world } from '../lib/world';
-import { IPosition } from '../types/game';
-import { waitUntil } from '../utils/waitUntil';
-import { IPath } from './shared/pathExecute';
 import { ScriptBase } from './shared/scriptBase';
 
-interface IFighterScriptOptions {
-  npcName: string;
+interface IDungeonOneKillerOptions {
+  npcNames: string[];
   foodName: string;
   chestPos: [number, number];
   criticalHpPercent: number;
 }
 
-export class SapphireDragonFighterScript extends ScriptBase {
-  constructor(scriptName: string, private options: IFighterScriptOptions) {
+export class DungeonOneKillerScript extends ScriptBase {
+  constructor(scriptName: string, private options: IDungeonOneKillerOptions) {
     super(scriptName);
   }
 
@@ -51,67 +49,44 @@ export class SapphireDragonFighterScript extends ScriptBase {
   goToDungeon = async () => {
     this.currentAction = 'Going to dungeon';
 
-    const path: IPath[] = [
-      {
-        actions: ['kill', 'move'],
-        pos: [22, 86],
-      },
-      {
-        actions: ['kill', 'move'],
-        pos: [22, 89],
-      },
-      {
-        actions: ['kill'],
-        pos: [24, 89],
-      },
-      {
-        actions: ['move', 'use near teleport'],
-        pos: [24, 88],
-      },
-      {
-        actions: ['sleep'],
-        min: 500,
-        max: 1500,
-      },
-      {
-        actions: ['move'],
-        pos: [24, 88],
-      },
-      {
-        actions: ['move'],
-        pos: [24, 87],
-      },
-      {
-        actions: ['kill', 'move'],
-        pos: [27, 86],
-      },
-      {
-        actions: ['kill', 'move'],
-        pos: [29, 87],
-      },
-    ];
+    await this.pathExecute(`
+      set critical hp [${this.options.criticalHpPercent}]
 
-    await this.pathExecute(path);
+      // To dungeon 1
+      use teleport [25, 88]
+      sleep [1000, 2000]
+
+      // Traverse to dragons
+      move [24, 87]
+      kill [27, 86]
+      kill [29, 87]
+      move [37, 87]
+      kill [41, 87]
+      kill [45, 87]
+      kill [48, 89]
+      kill [50, 88]
+      kill [53, 88]
+      kill [56, 88]
+      kill [59, 87]
+      kill [64, 88]
+      kill, move [69, 88]
+      kill [70, 93]
+      kill [73, 93]
+      kill [76, 93]
+      kill [79, 93]
+    `);
+
+    await this.sleep(1000, 2000);
   };
 
   attackNpc = async () => {
     this.currentAction = 'Attacking NPC';
-    await player.attackClosest(this.options.npcName);
+    await combat.attackClosest(this.options.npcNames);
   };
 
   waitUntilFightDone = async () => {
     this.currentAction = 'Fighting';
-
-    await waitUntil(
-      () => (!players[0].temp.busy && !inAFight) || this.isCriticalHp()
-    );
-
-    if (this.isCriticalHp()) {
-      this.currentAction = 'Running away';
-      await player.runFromFight();
-      return;
-    }
-
+    await combat.waitUntilFightDone(this.options.criticalHpPercent);
     await this.sleep(500, 2500);
   };
 
@@ -145,9 +120,5 @@ export class SapphireDragonFighterScript extends ScriptBase {
   eat = async () => {
     this.currentAction = 'Eating';
     await player.eatFood();
-  };
-
-  isCriticalHp = () => {
-    return player.getHealthPercent() <= this.options.criticalHpPercent;
   };
 }

@@ -20,6 +20,7 @@
     "babel-core": "^6.26.3",
     "babel-preset-env": "^1.7.0",
     "cors": "^2.8.5",
+    "dayjs": "^1.8.9",
     "draggable": "^4.2.0",
     "express": "^4.16.4",
     "http-server": "^0.11.1",

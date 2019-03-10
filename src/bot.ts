@@ -5,9 +5,10 @@ import { captchaDetector } from './utils/2captcha';
 import * as logger from './utils/logger';
 import { sleep } from './utils/waitUntil';
 
+export let ws: WebSocket;
+
 export class Bot {
   panel: Panel;
-  ws: WebSocket;
 
   constructor() {
     this.start();
@@ -63,8 +64,8 @@ export class Bot {
     const fnOriginal = addChatText;
     const proxy = new Proxy(fnOriginal, {
       apply: (fn, ctx, args) => {
-        if (this.ws && this.ws.readyState === 1) {
-          this.ws.send(JSON.stringify(args));
+        if (ws && ws.readyState === 1) {
+          ws.send(JSON.stringify(args));
         }
 
         return fn.apply(ctx, args);
@@ -75,13 +76,13 @@ export class Bot {
   }
 
   startWebSocket = () => {
-    this.ws = new WebSocket('ws://localhost:1337');
+    ws = new WebSocket('ws://localhost:1337');
 
-    this.ws.onopen = () => {
-      console.log('Connected to websocket');
+    ws.onopen = () => {
+      logger.log('[SOCKET] Connected');
     };
 
-    this.ws.onmessage = (ev: MessageEvent) => {
+    ws.onmessage = (ev: MessageEvent) => {
       const data = JSON.parse(ev.data);
 
       if (data.type === 'chat message') {
@@ -89,7 +90,9 @@ export class Bot {
       }
     };
 
-    this.ws.onclose = () => {
+    ws.onclose = () => {
+      logger.log('[SOCKET] Disconnected');
+
       setTimeout(() => {
         this.startWebSocket();
       }, 2500);

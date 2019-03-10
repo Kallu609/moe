@@ -34,7 +34,7 @@ export class DorpatMiningScript extends ScriptBase {
   walkToMine = async () => {
     this.currentAction = 'Walking to mine';
     await player.moveTo(66, 30);
-    await world.useTeleport();
+    await world.useTeleportNear();
   };
 
   walkToMiningSpot = async () => {
@@ -46,10 +46,10 @@ export class DorpatMiningScript extends ScriptBase {
 
   startMining = async () => {
     this.currentAction = 'Mining';
-    await player.mine('iron');
+    await player.useSkill(67, 15);
     await player.inventory.waitUntilFull();
     await player.pet.load();
-    await player.mine('iron');
+    await player.useSkill(67, 15);
     await player.inventory.waitUntilFull();
   };
 
@@ -58,7 +58,7 @@ export class DorpatMiningScript extends ScriptBase {
     await player.moveTo(69, 15);
     await this.sleep(500, 1500);
     await player.moveTo(67, 29);
-    await world.useTeleport();
+    await world.useTeleportNear();
   };
 
   walkToBank = async () => {

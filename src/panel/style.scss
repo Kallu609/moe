@@ -1,36 +1,72 @@
-@import url('https://fonts.googleapis.com/css?family=Source+Code+Pro');
+@import 'colors.scss';
+$font: 12px monospace;
 
-.bot-panel {
+%bot-window {
   all: initial;
   all: unset;
 
+  z-index: 9001;
+  background: $primary-darkest !important;
+  color: $neutral-base;
+  font: $font;
+
   * {
     cursor: default !important;
-    color: white;
+    color: $neutral-base;
   }
+}
+
+.mouse-coords {
+  @extend %bot-window;
+
+  position: absolute;
+  padding: 5px;
+  border-radius: 5px;
+}
+
+.bot-panel {
+  @extend %bot-window;
+
+  z-index: 9000;
+  display: grid;
+  grid-template-columns: 300px;
 
   position: absolute;
   padding: 5px;
   bottom: 0px;
   right: 0px;
-  z-index: 9999;
-  background: #112f41 !important;
-  color: white;
   opacity: 0.92;
-  font-size: 12px;
-  font-family: monospace;
+  border-radius: 5px 0px 0px 0px;
 
   details {
     margin-top: 5px;
   }
 
+  textarea,
+  button,
+  select {
+    background: $primary-darker;
+    user-select: none;
+  }
+
+  .col-left {
+    display: none;
+
+    #logs {
+      height: calc(100% - 1px);
+      width: calc(100% - 8px);
+      resize: none;
+      border: none;
+    }
+  }
+
   .grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    width: 300px;
-    margin-top: 5px;
     align-items: center;
+  }
 
+  .col-right {
     div {
       padding: 5px;
       white-space: nowrap;
@@ -42,15 +78,13 @@
       border: 0;
       width: 100%;
       height: 20px;
-      background: #068587;
-      user-select: none;
 
       &:hover:enabled {
-        background: #046466;
+        background: $primary-dark;
       }
 
       &:disabled {
-        color: #9b9b9b;
+        color: $neutral-darker;
       }
     }
   }

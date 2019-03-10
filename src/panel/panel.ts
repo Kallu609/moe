@@ -1,20 +1,18 @@
+import * as dayjs from 'dayjs';
 import * as _ from 'lodash';
 
+import { customPathTo } from '../lib/path';
+import { player } from '../lib/player';
 import { world } from '../lib/world';
-import { ArcheryScript } from '../scripts/archer';
-import { BottleFillerScript } from '../scripts/bottleFiller';
-import { DorpatMiningScript } from '../scripts/dorpatMining';
-import { FighterScript } from '../scripts/fighter';
-import { ForgerScript } from '../scripts/forger';
-import { MiningGuildScript } from '../scripts/miningGuildMining';
-import { SandSmelterScript } from '../scripts/sandSmelter';
-import { SapphireDragonFighterScript } from '../scripts/sapphireDragonFighter';
 import { ScriptBase } from '../scripts/shared/scriptBase';
-import { ShopBuyerScript } from '../scripts/shopBuyer';
-import { TesterScript } from '../scripts/tester';
-import { WoodcutterScript } from '../scripts/woodcutter';
 import { IPosition } from '../types/game';
 import { waitUntil } from '../utils/waitUntil';
+import { hide, show } from './helpers';
+import { scriptList } from './scripts';
+
+interface IScripts {
+  [name: string]: ScriptBase;
+}
 
 const $ = document.querySelector.bind(document);
 let $p: any;
@@ -23,11 +21,16 @@ export class Panel {
   public socketTrafficOut: boolean = false;
   public socketTrafficIn: boolean = false;
   private URL_BASE = 'http://localhost:8080/';
-  private scripts: {
-    [name: string]: ScriptBase;
-  } = {};
+  private scripts: IScripts = {};
   private currentScript: ScriptBase;
+
+  private showMouseCoords = false;
   private mouseTile: IPosition;
+  private mouseCoordsEl: HTMLDivElement;
+  private mouseCoordsXEl: HTMLSpanElement;
+  private mouseCoordsYEl: HTMLSpanElement;
+  private recordingPath = false;
+  private recordedPath: Array<Array<number[] | string>> = [];
 
   constructor() {
     this.init();
@@ -44,60 +47,24 @@ export class Panel {
   }
 
   addScripts() {
-    this.addScriptToList(
-      new ShopBuyerScript('Shop buyer', {
-        itemName: 'fir log',
-      })
-    );
-    this.addScriptToList(new SandSmelterScript('Sand smelter'));
-    this.addScriptToList(new BottleFillerScript('Bottle filler rakblood'));
-    this.addScriptToList(new MiningGuildScript('Mining guild miner'));
-    this.addScriptToList(new DorpatMiningScript('Dorpat miner'));
+    const scriptListEl = $p('#script-list') as HTMLSelectElement;
+    const startScriptEl = $p('#start-script') as HTMLButtonElement;
+    const selectedScript = localStorage.getItem('selected_script');
+    const sortedScripts = scriptList.sort((a, b) => (a.name > b.name ? 1 : -1));
 
-    this.addScriptToList(
-      new WoodcutterScript('Woodcutter', {
-        treePos: [70, 18],
-        nearChestPos: [14, 33],
-      })
-    );
+    sortedScripts.forEach((script, i) => {
+      this.addScriptToList(script);
 
-    this.addScriptToList(
-      new ForgerScript('Forger', {
-        materialName: 'oak log',
-        produceName: 'oak stick',
-      })
-    );
-
-    this.addScriptToList(
-      new FighterScript('Fighter', {
-        npcName: 'minotaur',
-        foodName: 'cooked cowfish',
-        chestPos: [22, 17],
-        criticalHpPercent: 40,
-      })
-    );
-
-    this.addScriptToList(
-      new SapphireDragonFighterScript('Ruby dragon fighter', {
-        npcName: 'ruby dragon',
-        foodName: 'cooked cowfish',
-        chestPos: [22, 17],
-        criticalHpPercent: 40,
-      })
-    );
-
-    this.addScriptToList(
-      new ArcheryScript('Archer', {
-        npcName: 'Dragonfly',
-        chestPos: [83, 37],
-        arrowName: 'bronze cactus arrow',
-      })
-    );
-
-    this.addScriptToList(new TesterScript('Tester'));
+      if (script.name === selectedScript) {
+        this.currentScript = script;
+        scriptListEl.selectedIndex = i + 1;
+        startScriptEl.disabled = false;
+      }
+    });
   }
 
   eventHandlers = () => {
+    const leftColEl = $p('.col-left') as HTMLDivElement;
     const detailsEl = $p('details') as HTMLElement;
     const summaryEl = $p('summary') as HTMLElement;
     const scriptListEl = $p('#script-list') as HTMLSelectElement;
@@ -105,10 +72,14 @@ export class Panel {
     const stopScriptEl = $p('#stop-script') as HTMLButtonElement;
     const socketTrafficOutEl = $p('#socket-traffic-out') as HTMLInputElement;
     const socketTrafficInEl = $p('#socket-traffic-in') as HTMLInputElement;
+    const mouseCoordsCheckbox = $p('#mouse-coords') as HTMLInputElement;
+    const mouseCoordsEl = $('.mouse-coords') as HTMLDivElement;
+    const recordPathCheckbox = $p('#record-path') as HTMLInputElement;
 
     scriptListEl.onchange = () => {
       this.currentScript = this.scripts[scriptListEl.value];
       startScriptEl.disabled = false;
+      localStorage.setItem('selected_script', scriptListEl.value);
     };
 
     startScriptEl.onclick = () => {
@@ -140,15 +111,46 @@ export class Panel {
       this.socketTrafficIn = socketTrafficInEl.checked;
     };
 
+    // Mouse coords
+    this.showMouseCoords =
+      !!Number(localStorage.getItem('mouse_coords_enabled')) || false;
+    this.showMouseCoords ? show(mouseCoordsEl) : hide(mouseCoordsEl);
+    mouseCoordsCheckbox.checked = this.showMouseCoords;
+
+    mouseCoordsCheckbox.onchange = () => {
+      const enabled = mouseCoordsCheckbox.checked;
+      enabled ? show(mouseCoordsEl) : hide(mouseCoordsEl);
+      this.showMouseCoords = enabled;
+      localStorage.setItem('mouse_coords_enabled', Number(enabled).toString());
+    };
+
+    recordPathCheckbox.onchange = () => {
+      this.recordingPath = recordPathCheckbox.checked;
+
+      if (recordPathCheckbox.checked) {
+        $('.bot-panel').style.gridTemplateColumns = '200px 300px';
+        show(leftColEl);
+        this.logClear();
+        this.recordedPath = [];
+        return;
+      }
+
+      $('.bot-panel').style.gridTemplateColumns = '300px';
+      hide(leftColEl);
+    };
+
     setInterval(() => {
       this.updateVariables();
     }, 100);
 
+    document.body.addEventListener('mousedown', this.onMouseDown);
     document.body.addEventListener('keydown', this.onKeyDown);
-    document.body.addEventListener(
-      'mousemove',
-      _.throttle(this.onMouseMove, 100)
-    );
+    document.body.addEventListener('mousemove', e => {
+      this.mouseCoordsEl = $('.mouse-coords');
+      this.mouseCoordsXEl = $('.mouse-coords #x');
+      this.mouseCoordsYEl = $('.mouse-coords #y');
+      this.onMouseMove(e);
+    });
   };
 
   updateVariables() {
@@ -179,29 +181,104 @@ export class Panel {
         : '-';
   }
 
-  onKeyDown(e: KeyboardEvent) {
-    if (e.key === 'Dead' && this.mouseTile.i) {
+  onKeyDown = (e: KeyboardEvent) => {
+    if (e.key === '+' && this.mouseTile.i) {
       const obj = world.getObjectAt(this.mouseTile.i, this.mouseTile.j);
       console.log(obj);
     }
-  }
+  };
 
-  onMouseMove(e: MouseEvent) {
-    const mouseCoordsEl = $p('#mouse-coords') as HTMLDivElement;
-    const underMouseEl = $p('#under-mouse') as HTMLDivElement;
+  onMouseMove = (e: MouseEvent) => {
     const tile = translateMousePosition(e.clientX, e.clientY);
-
     this.mouseTile = tile;
 
-    if (!tile || !tile.i || !tile.j) {
+    if (this.showMouseCoords && tile && tile.i) {
+      this.mouseCoordsEl.style.left = e.pageX - 20 + 'px';
+      this.mouseCoordsEl.style.top = e.pageY - 30 + 'px';
+      this.mouseCoordsXEl.textContent = tile.i.toString();
+      this.mouseCoordsYEl.textContent = tile.j.toString();
+    }
+  };
+
+  addToPath = (step: Array<number[] | string>) => {
+    this.recordedPath.push(step);
+    this.logClear();
+    this.log(
+      this.recordedPath
+        .map(recordedStep => {
+          const [stepName, ...args] = recordedStep;
+          return `${stepName} ${args.join(',')}`;
+        })
+        .join('\n')
+    );
+  };
+
+  onMouseDown = async (e: MouseEvent) => {
+    if (!e) {
       return;
     }
 
-    const obj = world.getObjectAt(tile.i, tile.j);
+    // Middle click
+    if (e.button === 1) {
+      if (!minimap) {
+        const obj = world.getObjectAt(this.mouseTile.i, this.mouseTile.j);
 
-    mouseCoordsEl.innerHTML = tile ? `i: ${tile.i}, j: ${tile.j}` : '-';
-    underMouseEl.innerHTML = obj ? obj.name : '-';
-  }
+        console.log(obj);
+
+        if (this.recordingPath) {
+          if (!obj) {
+            return this.addToPath([
+              'move',
+              [this.mouseTile.i, this.mouseTile.j],
+            ]);
+          }
+
+          if (world.isEnemy(obj)) {
+            return this.addToPath(['attack', [obj.i, obj.j]]);
+          }
+
+          if (obj.name === 'Chest') {
+            return this.addToPath(['open chest', [obj.i, obj.j]]);
+          }
+
+          if (obj.params.to_map !== undefined) {
+            return this.addToPath(['teleport', [obj.i, obj.j]]);
+          }
+
+          if (obj.params.results !== undefined) {
+            return this.addToPath(['use skill', [obj.i, obj.j]]);
+          }
+        }
+
+        console.log(obj);
+        return;
+      }
+
+      let { i, j } = Mods.Newmap.MouseTranslate(e.clientX, e.clientY);
+
+      if (!i === undefined || !j === undefined) {
+        return;
+      }
+
+      i = Math.round(i) - 9;
+      j = Math.round(j) + 7;
+
+      const closest = world.getClosestWalkable(i, j, true);
+
+      if (!closest) {
+        return;
+      }
+
+      const path = customPathTo(closest.i, closest.j, 'monsterAvoid');
+
+      if (path.length) {
+        console.log('lets GOO!!!');
+        Editor.toggle_minimap();
+        player.setPathTo(path);
+        refreshHUD();
+      }
+    }
+  };
 
   async addScriptToList(script: ScriptBase) {
     const scriptListEl = $p('#script-list') as HTMLSelectElement;
@@ -221,6 +298,17 @@ export class Panel {
     });
 
     this.scripts[script.name] = script;
+  }
+
+  async logClear() {
+    const logs = $p('#logs') as HTMLTextAreaElement;
+    logs.value = '';
+  }
+
+  async log(text: string, timestamp?: boolean) {
+    const logs = $p('#logs') as HTMLTextAreaElement;
+    logs.value +=
+      (timestamp ? dayjs().format('[HH:mm:ss] ') : '') + text + '\n';
   }
 
   async addStyle() {

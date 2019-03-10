@@ -1,7 +1,7 @@
+import combat from '../lib/combat';
 import { getFoodHealAmount } from '../lib/item';
 import { player } from '../lib/player';
 import { world } from '../lib/world';
-import { IPosition } from '../types/game';
 import { waitUntil } from '../utils/waitUntil';
 import { ScriptBase } from './shared/scriptBase';
 
@@ -40,7 +40,13 @@ export class FighterScript extends ScriptBase {
     this.currentAction = 'Attacking NPC';
 
     const npc = world.getClosestNpc(this.options.npcName);
-    await player.attackNpc(npc);
+
+    if (!npc) {
+      await this.sleep(500, 1500);
+      return;
+    }
+
+    await combat.attackNpc(npc);
   };
 
   waitUntilFightDone = async () => {
@@ -52,8 +58,16 @@ export class FighterScript extends ScriptBase {
 
     if (this.isCriticalHp()) {
       this.currentAction = 'Running away';
-      await player.runFromFight();
+      await combat.runFromFight();
       return;
+    } else {
+      const lootCrate = world
+        .getNearObjects()
+        .find(near => world.isLootCrateAtPos(near.i, near.j));
+
+      if (lootCrate) {
+        await world.destroyLootCrate(lootCrate.i, lootCrate.j);
+      }
     }
 
     await this.sleep(500, 2500);

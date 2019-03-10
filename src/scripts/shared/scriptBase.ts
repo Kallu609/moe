@@ -2,19 +2,15 @@ import * as _ from 'lodash';
 
 import * as logger from '../../utils/logger';
 import { sleep } from '../../utils/waitUntil';
-import { IPath, PathExecutor } from './pathExecute';
+import { PathExecutor } from './pathExecute';
 
 export abstract class ScriptBase {
   running: boolean;
   stopFlag: boolean = false;
   currentAction: string;
   stopAction: () => void;
-  pathExecute: (path: IPath[]) => Promise<void>;
 
-  constructor(public name: string) {
-    const pathExecutor = new PathExecutor(this);
-    this.pathExecute = pathExecutor.pathExecute;
-  }
+  constructor(public name: string) {}
 
   abstract getAction(): () => void;
 
@@ -51,17 +47,17 @@ export abstract class ScriptBase {
     this.stopAction = action;
   }
 
-  start() {
+  start = () => {
     this.running = true;
     this.stopFlag = false;
     this.run();
     logger.log(`[SCRIPT] "${this.name}" started`);
-  }
+  };
 
-  stop() {
+  stop = () => {
     this.stopFlag = true;
     logger.log(`[SCRIPT] "${this.name}" stopping...`);
-  }
+  };
 
   sleep = async (min: number, max: number) => {
     const sleepTime = _.random(min, max);

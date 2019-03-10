@@ -2,30 +2,86 @@ import * as _ from 'lodash';
 
 import { IObject, IPosition } from '../types/game';
 import { sortByDistance } from '../utils/math';
-import { waitUntil } from '../utils/waitUntil';
+import { sleep, waitUntil } from '../utils/waitUntil';
 import { itemIdFromName, itemIdsFromNames } from './item';
+import { customGraphs, customPathTo } from './path';
 import { player } from './player';
 
 export const world = {
-  pathTo: (i: number, j: number) =>
-    findPathFromTo(players[0], { i, j }, players[0]),
+  pathTo(i: number, j: number, safe?: boolean) {
+    if (safe) {
+      return customPathTo(i, j, 'monsterAvoid');
+    }
+
+    const oldMapIncrease = map_increase;
+    map_increase = map_size_x * 2;
+    const path = findPathFromTo(players[0], { i, j }, players[0]);
+    map_increase = oldMapIncrease;
+    return path;
+  },
+
+  pathToPos: (pos: IPosition, safe?: boolean) =>
+    pos ? world.pathTo(pos.i, pos.j, safe) : [],
 
   async waitForMap(mapId: number | string) {
     await waitUntil(
       () =>
-        current_map === Number(mapId) &&
+        Number(current_map) === Number(mapId) &&
         !map_change_in_progress &&
         node_graphs[mapId]
     );
   },
 
   getAdjacentPositions(position: IPosition) {
+    if (!position) {
+      debugger;
+    }
+
     return [
       { i: position.i - 1, j: position.j },
       { i: position.i + 1, j: position.j },
       { i: position.i, j: position.j - 1 },
       { i: position.i, j: position.j + 1 },
     ];
+  },
+
+  getClosestWalkable(targetI: number, targetJ: number, safe?: boolean) {
+    const { monsterAvoid } = customGraphs;
+    const mapNodes = safe
+      ? monsterAvoid[current_map].nodes
+      : node_graphs[current_map].nodes;
+    const closest = {
+      distance: map_size_x,
+      i: NaN,
+      j: NaN,
+    };
+
+    const oldMapIncrease = map_increase;
+    map_increase = 200;
+
+    const minI = Math.min(players[0].i, targetI);
+    const maxI = Math.max(players[0].i, targetI);
+    const minJ = Math.min(players[0].j, targetJ);
+    const maxJ = Math.max(players[0].j, targetJ);
+
+    for (let i = minI; i < maxI; i++) {
+      for (let j = minJ; j < maxJ; j++) {
+        if (mapNodes[i][j].isWall() || !world.pathTo(i, j, safe).length) {
+          continue;
+        }
+
+        const d = distance(targetI, targetJ, i, j);
+
+        if (d < closest.distance) {
+          closest.distance = d;
+          closest.i = i;
+          closest.j = j;
+        }
+      }
+    }
+
+    map_increase = oldMapIncrease;
+    return closest.i ? { i: closest.i, j: closest.j } : false;
   },
 
   getNearestWalkablePosition(position: IPosition | IObject) {
@@ -51,12 +107,9 @@ export const world = {
   getNearObjects() {
     const pos = player.getPosition();
 
-    return [
-      world.getObjectAt(pos.i, pos.j - 1),
-      world.getObjectAt(pos.i, pos.j + 1),
-      world.getObjectAt(pos.i + 1, pos.j),
-      world.getObjectAt(pos.i - 1, pos.j),
-    ].filter(x => x) as IObject[];
+    return this.getAdjacentPositions({ i: pos.i, j: pos.j })
+      .map(adj => world.getObjectAt(adj.i, adj.j))
+      .filter(x => x) as IObject[];
   },
 
   getNearObjectByName(name: string) {
@@ -87,7 +140,7 @@ export const world = {
 
     if (!nearEachOther(obj, players[0])) {
       const walkable = world.getNearestWalkablePosition(obj);
-      await player.moveToPos(walkable);
+      await player.moveTo(walkable.i, walkable.j);
     }
 
     if (obj.params && obj.params.to_map !== undefined) {
@@ -111,6 +164,10 @@ export const world = {
     }
   },
 
+  getObjectAtPos(pos: IPosition) {
+    return this.getObjectAt(pos.i, pos.j);
+  },
+
   getObjectsById(id: number) {
     const npcs: IObject[] = [];
 
@@ -118,6 +175,7 @@ export const world = {
     for (let i = 0; i < on_map[current_map].length; i++) {
       for (let j = 0; j < on_map[current_map][0].length; j++) {
         const tile = on_map[current_map][i][j];
+
         if (tile && tile.b_i === id) {
           const obj = world.getObjectAt(i, j);
 
@@ -156,9 +214,11 @@ export const world = {
     return closest as IObject;
   },
 
-  getClosestNpcsSorted(name: string): IObject[] {
+  getClosestNpcsSorted(names: string | string[]): IObject[] {
+    names = _.isArray(names) ? names : [names];
+
     const playerPos = player.getPosition();
-    const npcs = this.getNpcsByName(name);
+    const npcs = _.flatten(names.map(name => this.getNpcsByName(name)));
     const closest = sortByDistance(playerPos, npcs);
 
     return closest as IObject[];
@@ -177,45 +237,58 @@ export const world = {
     );
   },
 
+  isEnemy(obj: IObject | false) {
+    if (!obj) {
+      return false;
+    }
+
+    return (
+      obj.b_t === BASE_TYPE.NPC &&
+      BASE_TYPE[obj.b_t][obj.b_i].type === OBJECT_TYPE.ENEMY
+    );
+  },
+
   isLootCrate(o: IObject | false) {
     return o && o.b_t === '1' && o.b_i === 555;
+  },
+
+  isLootCrateAtPos(i: number, j: number) {
+    return this.isLootCrate(this.getObjectAt(i, j));
   },
 
   async destroyLootCrate(i: number, j: number) {
     const obj = world.getObjectAt(i, j);
 
-    if (!obj) {
+    if (!obj || !this.isLootCrate(obj)) {
       return;
     }
 
-    if (this.isLootCrate(obj)) {
-      if (!nearEachOther(obj, players[0])) {
-        const walkable = world.getNearestWalkablePosition({ i, j });
-        await player.moveToPos(walkable);
+    if (!nearEachOther(obj, players[0])) {
+      const walkable = world.getNearestWalkablePosition({ i, j });
+      await player.moveToPos(walkable);
+    }
+
+    Socket.send('loot_crate', {
+      map: current_map,
+      i,
+      j,
+      destroy: 1,
+    });
+    LootCrate.remove(i, j, current_map);
+
+    await waitUntil(() => {
+      const newObj = world.getObjectAt(i, j);
+
+      if (!newObj || !this.isLootCrate(newObj)) {
+        return true;
       }
 
-      Socket.send('loot_crate', {
-        map: current_map,
-        i,
-        j,
-        destroy: 1,
-      });
-      LootCrate.remove(i, j, current_map);
-
-      await waitUntil(() => {
-        const newObj = world.getObjectAt(i, j);
-
-        if (!newObj || !this.isLootCrate(newObj)) {
-          return true;
-        }
-
-        return false;
-      });
-    }
+      return false;
+    });
   },
 
   chest: {
-    waitUntilOpened: () => waitUntil(() => Chest.is_open()),
+    waitUntilOpened: async () => waitUntil(() => Chest.is_open()),
 
     getItemCountById: (itemId: number) => {
       const chestItem = chest_content.find(x => Number(x.id) === itemId);
@@ -240,8 +313,8 @@ export const world = {
 
       if (chest) {
         if (!nearEachOther(chest, players[0])) {
-          const walkPos = world.getNearestWalkablePosition(chest);
-          await player.moveToPos(walkPos);
+          const walkable = world.getNearestWalkablePosition(chest);
+          await player.moveTo(walkable.i, walkable.j);
         }
 
         DEFAULT_FUNCTIONS.access(chest, players[0]);
@@ -282,23 +355,28 @@ export const world = {
         player.inventory.getAllItemsCount() -
         player.inventory.getUnequippedCount();
 
-      Socket.send('chest_deposit_all', {
-        target_id: chest_npc.id,
-        target_i: chest_npc.i,
-        target_j: chest_npc.j,
-      });
-
-      Socket.send('pet_chest_unload_to_chest', {
-        target_id: chest_npc.id,
-        target_i: chest_npc.i,
-        target_j: chest_npc.j,
-      });
-
-      await waitUntil(
-        () =>
+      while (
+        !(
           player.inventory.getAllItemsCount() === targetCount &&
           players[0].pet.chest.length === 0
-      );
+        )
+      ) {
+        Socket.send('chest_deposit_all', {
+          target_id: chest_npc.id,
+          target_i: chest_npc.i,
+          target_j: chest_npc.j,
+        });
+
+        if (players[0].pet.enabled) {
+          Socket.send('pet_chest_unload_to_chest', {
+            target_id: chest_npc.id,
+            target_i: chest_npc.i,
+            target_j: chest_npc.j,
+          });
+        }
+
+        await sleep(500);
+      }
     },
 
     async depositItems(itemNames: string[]) {

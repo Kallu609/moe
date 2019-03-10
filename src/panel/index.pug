@@ -1,37 +1,50 @@
+.mouse-coords
+  span#x 0
+  span ,
+  span#y 0
+
 .bot-panel
-  .grid
-    div Script state
-    #script-state -
 
-    div Select script
-    div
-      select#script-list
-        option(disabled selected value='') -
-    
-    div
-      button(disabled)#start-script Start script
-    div
-      button(disabled)#stop-script Stop script
-
-  details
-    summary Show details
-
+  .col-left
+    textarea#logs
+  .col-right
     .grid
-      div Socket traffic
+      div Script state
+      #script-state -
+
+      div Select script
       div
-        input(type="checkbox" id="socket-traffic-out")
-        | Out
-        input(type="checkbox" id="socket-traffic-in")
-        | In
+        select#script-list
+          option(disabled selected value='') -
+      
+      div
+        button(disabled)#start-script Start script
+      div
+        button(disabled)#stop-script Stop script
 
-      div Mouse coords
-      #mouse-coords
+    details
+      summary Show details
 
-      div Under mouse
-      #under-mouse
+      .grid
+        div Socket traffic
+        div
+          input(type="checkbox" id="socket-traffic-out")
+          | Out
+          input(type="checkbox" id="socket-traffic-in")
+          | In
 
-      div Current map
-      #current-map
+        div Mouse coords
+        div
+          input(type="checkbox" id="mouse-coords")
+          | Show
 
-      div Player path
-      #player-path
+        div Record path
+        div
+          input(type="checkbox" id="record-path")
+          | Enable
+
+        div Current map
+        #current-map
+
+        div Player path
+        #player-path

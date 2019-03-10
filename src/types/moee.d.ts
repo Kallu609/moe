@@ -1,7 +1,7 @@
 import {
     IArcheryCollision, ICanPerformSkill, IChestItem, IClosestWalkablePosition,
-    IForgeFormulas as IForgeFormula, IItemBase, IMapJsonItem, INpc, IObject, IPlayer, IPlayers,
-    IPosition, IResourceList, IShopSlot, ISkills, ISortClosestTo
+    IForgeFormulas as IForgeFormula, IItemBase, IMapJsonItem, INodeGraphs, INpc, IObject,
+    IObjectType, IPlayer, IPlayers, IPosition, IResourceList, IShopSlot, ISkills, ISortClosestTo
 } from './game';
 
 declare global {
@@ -21,7 +21,6 @@ declare global {
   const objects_data: IObject[];
   const chest_npc: IObject;
   const on_map: IMapJsonItem[][][];
-  const node_graphs: any;
   const pets: any;
   const inAFight: boolean;
   const skills: ISkills[];
@@ -40,6 +39,8 @@ declare global {
   let selected_object: IObject;
 
   const BASE_TYPE: any;
+  const OBJECT_TYPE: IObjectType;
+
   const DEFAULT_FUNCTIONS: {
     access(object: IObject, player: IPlayer): void;
     mine(object: IObject, player: IPlayer): void;
@@ -99,12 +100,16 @@ declare global {
 
   const Mods: {
     loadedMods: string[];
+    Newmap: {
+      MouseTranslate: (i: number, j: number) => IPosition;
+    };
   };
 
   const Player: {
     auto_action(object: IObject): void;
     eat_food(): void;
     update_combat_attributes(player: IPlayer): void;
+    client_logout(): void;
   };
 
   const BigMenu: {
@@ -149,6 +154,19 @@ declare global {
     ): IArcheryCollision;
   };
 
+  const Client: {
+    monster_spawn(a: any): void;
+  };
+
+  const Monster: {
+    monster_cleanup_by_id(a: any): void;
+    hide(a: any): void;
+  };
+
+  const Editor: {
+    toggle_minimap(): void;
+  };
+
   const Shop: {
     activate_update(): void;
   };
@@ -175,4 +193,23 @@ declare global {
   const Socket: {
     send(name: string, value: any): void;
   };
+
+  /*
+    Pathfinder stuff
+  */
+  const sortArrayOfObjectsByFieldValueAsc: (arr: any[], key: string) => any;
+  let loadMap: (a: any, b: any, d: any) => any;
+  const minimap: boolean;
+  const map_size_x: number;
+  const map_size_y: number;
+  const BinaryHeap: any;
+  const GraphNodeType: {
+    OPEN: 1;
+    WALL: 0;
+  };
+  let node_graphs: INodeGraphs;
+  let d: any;
+  let h: any;
+
+  const refreshHUD: () => void;
 }
