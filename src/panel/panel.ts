@@ -6,6 +6,7 @@ import { player } from '../lib/player';
 import { world } from '../lib/world';
 import { ScriptBase } from '../scripts/shared/scriptBase';
 import { IPosition } from '../types/game';
+import { turnOnSleepMode } from '../utils/socket';
 import { waitUntil } from '../utils/waitUntil';
 import { hide, show } from './helpers';
 import { scriptList } from './scripts';
@@ -207,7 +208,7 @@ export class Panel {
       this.recordedPath
         .map(recordedStep => {
           const [stepName, ...args] = recordedStep;
-          return `${stepName} ${args.join(',')}`;
+          return `${stepName}${args.length ? ` [${args.join(',')}]` : ''}`;
         })
         .join('\n')
     );
@@ -284,6 +285,7 @@ export class Panel {
     const scriptListEl = $p('#script-list') as HTMLSelectElement;
     const startScriptEl = $p('#start-script') as HTMLButtonElement;
     const stopScriptEl = $p('#stop-script') as HTMLButtonElement;
+    const sleepModeEl = $p('#sleep-mode') as HTMLInputElement;
     const optionEl = document.createElement('option');
 
     optionEl.textContent = script.name;
@@ -295,6 +297,10 @@ export class Panel {
       scriptListEl.disabled = false;
       startScriptEl.disabled = false;
       stopScriptEl.disabled = true;
+
+      if (sleepModeEl.checked) {
+        turnOnSleepMode();
+      }
     });
 
     this.scripts[script.name] = script;

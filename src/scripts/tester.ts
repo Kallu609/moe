@@ -16,53 +16,27 @@ export class TesterScript extends ScriptBase {
   }
 
   test = async () => {
-    /*while (true) {
-      await sleep(500);
-
-      const result = await moveToWithForce(24, 87);
-      // const result = await moveToWithForce(79, 93);
-      const [state, ...args] = result;
-
-      if (state === movementState.monsterInWay) {
-        console.log('voi vittu monsu');
-        const [npc] = args;
-        await player.attackNpc(npc);
-        await player.waitUntilFightDone(70);
-
-        if (player.isCriticalHp(70)) {
-          await player.eatFood();
-        }
-      }
-
-      if (state === movementState.runAway) {
-        console.log('lol vittu jouduin tappelluu :D');
-        await player.runFromFight();
-
-        if (player.isCriticalHp(70)) {
-          await player.eatFood();
-        }
-
-        continue;
-      }
-
-      if (state === movementState.done) {
-        console.log('lol vittu meikä valmis xD');
-        break;
-      }
-
-      if (state === movementState.failed) {
-        console.log('ei vittu meikä failas');
-        break;
-      }
-    }
-    */
-
-    const oldMapIncrease = map_increase;
-    map_increase = 200;
-    const path = customPathTo(60, 60, 'monsterAvoid');
-    players[0].path = path;
-    map_increase = oldMapIncrease;
-
-    this.stop();
+    await this.pathExecute(`
+      move [21,84]
+      move [21,82]
+      move [19,82]
+      move [19,84]
+      move [21,84]
+      move [21,90]
+      move [19,90]
+      move [25,90]
+      teleport [25,88]
+      move [24,88]
+      move [24,87]
+      move [26,87]
+      move [24,87]
+      move [24,88]
+      teleport [22,88]
+      move [21,84]
+      move [21,82]
+      move [24,82]
+      move [24,85]
+      move [26,85]
+    `);
   };
 }

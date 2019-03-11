@@ -1,5 +1,6 @@
 import { player } from '../lib/player';
 import { world } from '../lib/world';
+import { turnOnSleepMode } from '../utils/socket';
 import { ScriptBase } from './shared/scriptBase';
 
 // Run this in rakblood
@@ -23,12 +24,11 @@ export class BottleFillerScript extends ScriptBase {
   withdrawBottles = async () => {
     this.currentAction = 'Withdrawing bottles';
     await world.chest.open(38, 65);
+    await world.chest.depositAll();
 
     if (!this.getChestBottleCount()) {
       return this.stop();
     }
-
-    await world.chest.depositAll();
 
     for (const bottleName of this.bottleNames) {
       await world.chest.withdraw(bottleName);

@@ -398,5 +398,3 @@ export interface ISkillingObject {
     xp: number;
   }>;
 }
-
-export interface Return {}

@@ -12,18 +12,17 @@ export interface IPath {
 }
 
 export class PathExecutor {
-  stopFlag = false;
   private criticalHpPercent: number;
 
   constructor(private script: ScriptBase) {}
 
-  pathExecute = async (pathText: string) => {
-    const path = this.loadPath(pathText);
+  pathExecute = async (pathText: string, reverse?: boolean) => {
+    const pathNodes = this.loadPath(pathText);
+    const path = reverse ? pathNodes.reverse() : pathNodes;
 
     for (const { actions, args } of path) {
       for (const action of actions) {
-        if (this.stopFlag) {
-          this.stopFlag = false;
+        if (this.script.stopFlag) {
           return;
         }
 
@@ -90,9 +89,7 @@ export class PathExecutor {
       while (npc && npc.b_t === BASE_TYPE.NPC) {
         if (player.isCriticalHp(this.criticalHpPercent)) {
           if (player.inventory.getFoodCount() === 0) {
-            await this.script.stop();
-            await player.logout();
-            this.stopFlag = true;
+            return this.script.stop();
           }
 
           await player.eatFood();
@@ -114,20 +111,36 @@ export class PathExecutor {
       }
 
       const [i, j] = args as number[];
-      return world.destroyLootCrate(i, j);
+      await world.destroyLootCrate(i, j);
+      return player.moveTo(i, j);
     }
 
-    if (action === 'use teleport') {
+    if (action === 'teleport') {
       if (!args) {
         return;
       }
 
       const [i, j] = args as number[];
-      return world.useTeleport(i, j);
+      await world.useTeleport(i, j);
+      return this.script.sleep(1000, 1500);
     }
 
-    if (action === 'use near teleport') {
-      return world.useTeleportNear();
+    if (action === 'open chest') {
+      if (!args) {
+        return;
+      }
+
+      const [i, j] = args as number[];
+      return world.chest.open(i, j);
+    }
+
+    if (action === 'use skill') {
+      if (!args) {
+        return;
+      }
+
+      const [i, j] = args as number[];
+      return player.useSkill(i, j);
     }
 
     if (action === 'sleep') {

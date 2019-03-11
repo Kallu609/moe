@@ -7,7 +7,14 @@ interface IFletchGuildWcOptions {
 }
 
 export class FletchGuildWcScript extends ScriptBase {
-  pathToGuild = [[45, 57], [41, 77], [38, 78], [37, 79]];
+  pathToGuild = `
+    move [46,53]
+    move [45,57]
+    move [43,68]
+    move [41,77]
+    move [37,77]
+    teleport [36,81]
+  `;
 
   constructor(scriptName: string, private options: IFletchGuildWcOptions) {
     super(scriptName);
@@ -31,16 +38,12 @@ export class FletchGuildWcScript extends ScriptBase {
 
   walkToGuild = async () => {
     this.currentAction = 'Walking to guild';
-    await player.walkPath(this.pathToGuild);
-    await world.useTeleport(36, 81);
-    await this.sleep(1000, 1500);
+    await this.pathExecute(this.pathToGuild);
   };
 
   walkToChest = async () => {
     this.currentAction = 'Walking to overworld';
-    await world.useTeleport(36, 81);
-    await this.sleep(1000, 1500);
-    await player.walkPath(this.pathToGuild, true);
+    await this.pathExecute(this.pathToGuild, true);
   };
 
   chopWood = async () => {

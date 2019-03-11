@@ -9,6 +9,7 @@ export abstract class ScriptBase {
   stopFlag: boolean = false;
   currentAction: string;
   stopAction: () => void;
+  pathExecute = new PathExecutor(this).pathExecute;
 
   constructor(public name: string) {}
 

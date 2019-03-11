@@ -25,8 +25,10 @@ export class Bot {
       }
     }
 
+    /*
     this.startWebSocket();
     this.chatTextProxy();
+    */
     this.socketOutProxy();
     this.socketInProxy();
 
@@ -60,6 +62,7 @@ export class Bot {
     });
   }
 
+  /*
   chatTextProxy() {
     const fnOriginal = addChatText;
     const proxy = new Proxy(fnOriginal, {
@@ -98,6 +101,7 @@ export class Bot {
       }, 2500);
     };
   };
+  */
 }
 
 (() => {

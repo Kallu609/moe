@@ -25,15 +25,6 @@ export const player = {
     return { i: players[0].i, j: players[0].j };
   },
 
-  async walkPath(path: number[][], reverse?: boolean) {
-    path = reverse ? path.reverse() : path;
-
-    for (const step of path) {
-      const [i, j] = step;
-      await player.moveTo(i, j);
-    }
-  },
-
   setPathTo(path: IPosition[]) {
     const oldMapIncrease = map_increase;
     map_increase = 200;
@@ -70,10 +61,8 @@ export const player = {
         const now = +new Date();
         const canSetPath =
           lastPathSet === undefined || now - lastPathSet > 1000;
-        console.log('not moving');
 
         if (canSetPath) {
-          console.log('path to', i, j);
           const path = world.pathTo(i, j, safe);
 
           if (!path) {
