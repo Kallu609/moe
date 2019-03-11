@@ -2,6 +2,8 @@
 
 Automates actions in RPG MO
 
+Comes with easy to use API ([Example script](https://github.com/eioo/moe/blob/master/src/scripts/fletchGuildWc.ts))
+
 ![Example](https://i.imgur.com/88cddF6.png)
 
 ## Requirements
